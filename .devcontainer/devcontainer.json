@@ -1,0 +1,44 @@
+{
+  "name": "VoIP Agent (Python + Node)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "nodeGypDependencies": true,
+      "pnpmVersion": "8"
+    }
+  },
+  "forwardPorts": [3000, 4001, 50051],
+  "portsAttributes": {
+    "3000": { "label": "Web (Next.js)", "onAutoForward": "notify" },
+    "4001": { "label": "Media Service", "onAutoForward": "silent" },
+    "50051": { "label": "AI Audio gRPC", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "pnpm install && (cd apps/ai-audio-service && python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt || true)",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-typescript-next",
+        "zxh404.vscode-proto3",
+        "mermaidchart.vscode-mermaid-chart",
+        "editorconfig.editorconfig",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/apps/ai-audio-service/.venv/bin/python",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}
