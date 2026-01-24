@@ -480,4 +480,3 @@ function CopilotPanel({ hints, suggestion }) {
 2. ✅ Agent 发送 DTMF 命令，PSTN 收到按键
 3. ✅ Agent 发送 RequestUserJoin，Web UI 显示提示
 4. ✅ Agent 发送 CopilotHint，Web UI 显示提示文字
-5. ✅ Agent 发送 CopilotSuggestion，Web UI 显示建议
