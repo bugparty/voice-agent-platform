@@ -8,9 +8,20 @@ const { WebSocketServer } = require("ws");
 const { getConfig } = require("./config/env");
 const { emitUiEvent, onUiEvent } = require("./events/bus");
 const { twilioEvent, vadEvent } = require("./events/normalize");
-const { buildTwiml } = require("./twilio/twiml");
+const { buildTwiml, buildOutboundConferenceTwiml, buildWebJoinConferenceTwiml } = require("./twilio/twiml");
 const { createTwilioClient, startCall, hangupCall } = require("./twilio/callControl");
-const { createSession, getSession, deleteSession } = require("./sessions/sessionStore");
+const { 
+  createSession, 
+  getSession, 
+  getSessionBySessionId,
+  deleteSession,
+  generateSessionId,
+  generateConfName,
+  updateSession,
+  updateSessionBySessionId
+} = require("./sessions/sessionStore");
+const AccessToken = require("twilio").jwt.AccessToken;
+const VoiceGrant = AccessToken.VoiceGrant;
 const { createVadMock } = require("./mock/vadMock");
 const { createAudioAiClient } = require("./grpc/client");
 
@@ -18,6 +29,7 @@ const config = getConfig();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Twilio sends form-urlencoded data
 app.use((req, res, next) => {
   // Basic request log for debugging
   console.log(`[media-service] ${req.method} ${req.url}`);
@@ -61,7 +73,7 @@ function mapVadAction(eventName) {
 }
 
 app.post("/twiml", (req, res) => {
-  console.log("[media-service] TwiML requested");
+  console.log("[media-service] TwiML requested (legacy)");
   const xml = buildTwiml({
     publicBaseUrl: config.publicBaseUrl,
     mediaWsPath: config.mediaWsPath
@@ -69,27 +81,139 @@ app.post("/twiml", (req, res) => {
   res.type("text/xml").send(xml);
 });
 
+app.post("/twiml/outbound", (req, res) => {
+  const { sessionId, confName } = req.query;
+  console.log("[media-service] Outbound TwiML requested", { sessionId, confName });
+  
+  if (!sessionId || !confName) {
+    return res.status(400).send("Missing sessionId or confName");
+  }
+  
+  const xml = buildOutboundConferenceTwiml({
+    publicBaseUrl: config.publicBaseUrl,
+    mediaWsPath: config.mediaWsPath,
+    sessionId,
+    confName
+  });
+  
+  res.type("text/xml").send(xml);
+});
+
+app.post("/twiml/webJoin", (req, res) => {
+  // Twilio sends parameters in the body as form-urlencoded
+  console.log("[media-service] Web join TwiML request body:", req.body);
+  console.log("[media-service] Web join TwiML request query:", req.query);
+  
+  // sessionId can come from body (Twilio) or query (testing)
+  const sessionId = req.body.sessionId || req.query.sessionId;
+  console.log("[media-service] Web join TwiML requested", { sessionId });
+  
+  if (!sessionId) {
+    console.warn("[media-service] Missing sessionId in webJoin request");
+    return res.status(400).send("Missing sessionId");
+  }
+  
+  const session = getSessionBySessionId(sessionId);
+  if (!session) {
+    console.warn("[media-service] Session not found:", sessionId);
+    return res.status(404).send("Session not found");
+  }
+  
+  console.log("[media-service] Found session for webJoin:", {
+    sessionId: session.sessionId,
+    confName: session.confName,
+    state: session.state
+  });
+  
+  const xml = buildWebJoinConferenceTwiml({
+    confName: session.confName
+  });
+  
+  console.log("[media-service] Returning webJoin TwiML:", xml);
+  res.type("text/xml").send(xml);
+});
+
+app.post("/token", (req, res) => {
+  try {
+    const { identity, sessionId } = req.body;
+    
+    if (!identity) {
+      return res.status(400).json({ error: "Missing identity" });
+    }
+    
+    // Check if API credentials are configured
+    if (!config.twilioApiKey || !config.twilioApiSecret || !config.twilioTwimlAppSid) {
+      console.warn("[media-service] Twilio API credentials not configured for token generation");
+      return res.status(501).json({ 
+        error: "Token generation not configured. Please set TWILIO_API_KEY, TWILIO_API_SECRET, and TWILIO_TWIML_APP_SID" 
+      });
+    }
+    
+    const token = new AccessToken(
+      config.twilioAccountSid,
+      config.twilioApiKey,
+      config.twilioApiSecret,
+      { identity }
+    );
+    
+    const voiceGrant = new VoiceGrant({
+      outgoingApplicationSid: config.twilioTwimlAppSid,
+      incomingAllow: false
+    });
+    
+    token.addGrant(voiceGrant);
+    
+    console.log("[media-service] Token generated for", identity);
+    
+    res.json({ 
+      token: token.toJwt(),
+      identity,
+      sessionId
+    });
+  } catch (error) {
+    console.error("[media-service] Token generation error", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/call/start", async (req, res) => {
   try {
+    const sessionId = generateSessionId();
+    const confName = generateConfName(sessionId);
+    
     console.log("[media-service] Starting call", {
       to: config.fixedToNumber,
-      from: config.twilioFromNumber
+      from: config.twilioFromNumber,
+      sessionId,
+      confName
     });
+    
     const call = await startCall({
       client: twilioClient,
       to: config.fixedToNumber,
       from: config.twilioFromNumber,
-      twimlUrl: `${config.publicBaseUrl}/twiml`
+      twimlUrl: `${config.publicBaseUrl}/twiml/outbound?sessionId=${sessionId}&confName=${encodeURIComponent(confName)}`
     });
+    
     console.log("[media-service] Call started", call.sid);
     activeCallSid = call.sid;
+    
+    // Create session preemptively
+    createSession({ 
+      sessionId, 
+      confName, 
+      callSid: call.sid,
+      streamSid: null 
+    });
+    
     emitTwilio({
       callSid: call.sid,
       event: "twilio.call.start",
-      data: { to: config.fixedToNumber },
+      data: { to: config.fixedToNumber, sessionId, confName },
       ts: 0
     });
-    res.json({ ok: true, callSid: call.sid });
+    
+    res.json({ ok: true, callSid: call.sid, sessionId, confName });
   } catch (error) {
     emitUiEvent({
       id: "error-start-call",
@@ -165,7 +289,43 @@ wss.on("connection", (socket) => {
       console.log("[media-service] Media stream started", message.start?.streamSid);
       const streamSid = message.start.streamSid;
       const callSid = message.start.callSid;
-      const session = createSession({ streamSid, callSid });
+      const customParams = message.start.customParameters || {};
+      const sessionId = customParams.session_id;
+      
+      console.log("[media-service] Media stream parameters", {
+        streamSid,
+        callSid,
+        sessionId,
+        customParams
+      });
+      
+      // Try to get existing session or create new one
+      let session = sessionId ? getSessionBySessionId(sessionId) : null;
+      if (session) {
+        // Update existing session with streamSid
+        console.log("[media-service] Found existing session", {
+          sessionId: session.sessionId,
+          oldStreamSid: session.streamSid,
+          newStreamSid: streamSid
+        });
+        
+        // Update the session and re-index by streamSid
+        session = updateSessionBySessionId(sessionId, {
+          streamSid,
+          state: 'IN_CALL'
+        });
+        
+        console.log("[media-service] ✓ Updated existing session", { 
+          sessionId, 
+          streamSid,
+          confName: session.confName,
+          state: session.state
+        });
+      } else {
+        // Create new session (fallback for legacy flow)
+        console.log("[media-service] Creating new session (legacy fallback)");
+        session = createSession({ streamSid, callSid });
+      }
       if (config.usePythonVad && audioAiClient) {
         const grpcStream = audioAiClient.Stream();
         grpcStream.on("data", (event) => {

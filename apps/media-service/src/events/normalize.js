@@ -35,8 +35,22 @@ function vadEvent({ ts, source, action, prob }) {
   });
 }
 
+function conferenceEvent({ ts, sessionId, confName, event, data }) {
+  return buildEvent({
+    category: "CONFERENCE",
+    payload: {
+      sessionId,
+      confName,
+      event: `conference.${event}`,
+      data
+    },
+    ts
+  });
+}
+
 module.exports = {
   buildEvent,
   twilioEvent,
-  vadEvent
+  vadEvent,
+  conferenceEvent
 };
