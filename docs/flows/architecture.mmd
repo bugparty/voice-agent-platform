@@ -1,0 +1,62 @@
+flowchart LR
+  n_user["User (Operator)"]
+
+  subgraph n_zone_ui["Web UI (Next.js)"]
+    n_ui_console["Debug Console (control + observability)"]
+    n_ui_local["Browser-local concerns mic permission device selection UI filters"]
+  end
+
+  subgraph n_zone_node["Node.js media-service Authoritative Orchestrator"]
+    n_node_api["Command Ingress HTTP WS endpoints"]
+    n_node_session["Session Manager callSid streamSid phase timers"]
+    n_node_gate["Policy Gate IVR vs HUMAN vs COPILOT"]
+    n_node_norm["Event Normalize unified event schema"]
+    n_node_exec["Execution Mapper DTMF TTS redirect hangup transfer"]
+  end
+
+  subgraph n_zone_twilio["Twilio"]
+    n_tw_rest["Twilio REST API"]
+    n_tw_twiml["TwiML Webhook Redirect"]
+    n_tw_ws["Media Streams WS mulaw 8k audio frames"]
+    n_tw_actions["Call Actions DTMF TTS redirect hangup transfer"]
+  end
+
+  subgraph n_zone_audio["Python ai-audio-service"]
+    n_ai_grpc["gRPC Bidi Server"]
+    n_ai_decode["Audio Pipeline mulaw to PCM16 resample frame"]
+    n_ai_vad["VAD Inference Silero VAD ONNX"]
+    n_ai_events["Audio Events VAD now ASR later"]
+  end
+
+  subgraph n_zone_agent["Python agent-service"]
+    n_ag_ingest["Context Ingest transcripts phase constraints"]
+    n_ag_plan["Planner produce plan and actions"]
+    n_ag_suggest["Suggestions structured proposed actions"]
+  end
+
+  n_user -->|"controls"| n_ui_console
+
+  n_ui_console -->|"UI intent commands"| n_node_api
+  n_node_norm -->|"authoritative events push"| n_ui_console
+  n_ui_local -->|"browser only state"| n_ui_console
+
+  n_node_exec -->|"execute telephony ops"| n_tw_rest
+  n_tw_rest -->|"call updates control"| n_tw_actions
+  n_node_exec -->|"TwiML control"| n_tw_twiml
+  n_tw_ws -->|"connected start media audio"| n_node_session
+  n_tw_actions -->|"call audio playback"| n_tw_ws
+
+  n_node_session -->|"AudioChunk stream"| n_ai_grpc
+  n_ai_grpc -->|"AiEvent stream"| n_node_session
+  n_ai_grpc --> n_ai_decode --> n_ai_vad --> n_ai_events
+
+  n_node_session -->|"structured context ask"| n_ag_ingest
+  n_ag_ingest --> n_ag_plan --> n_ag_suggest
+  n_ag_suggest -->|"proposed actions suggest only"| n_node_gate
+
+  n_node_api --> n_node_session
+  n_node_session --> n_node_gate --> n_node_exec
+  n_node_session --> n_node_norm
+
+  n_node_gate -->|"allow deny logged"| n_node_norm
+  n_node_gate -.->|"human copilot restrict execution"| n_node_exec
