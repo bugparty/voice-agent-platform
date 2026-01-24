@@ -1,0 +1,126 @@
+flowchart TD
+    Start([Incoming Call]) --> Welcome["Welcome Message
+    Welcome to ACME Services"]
+    Welcome --> L1["L1: Main Menu"]
+    
+    L1 --> |Press 1| L2_Pharmacy["L2: Pharmacy Services"]
+    L1 --> |Press 2| L2_Store["L2: Store Information"]
+    L1 --> |Press 3| L2_Other["L2: Other Inquiries"]
+    L1 --> |Press 0| L1_Error[Prompt: Please listen carefully]
+    L1_Error --> L1
+    L1 --> |Other/Invalid| L1_Invalid[Invalid Selection]
+    L1_Invalid --> L1
+    
+    %% L2 Pharmacy Branch
+    L2_Pharmacy --> |Press 1| L3_Pickup["L3: Prescription Pickup"]
+    L2_Pharmacy --> |Press 2| L3_Status["L3: Prescription Status"]
+    L2_Pharmacy --> |Press 3| L3_Billing["L3: Insurance and Billing"]
+    L2_Pharmacy --> |Press 9| L1
+    L2_Pharmacy --> |Press 0| L2_Pharmacy_Error[Prompt: Please listen carefully]
+    L2_Pharmacy_Error --> L2_Pharmacy
+    L2_Pharmacy --> |Other/Invalid| L2_Pharmacy_Invalid[Invalid Selection]
+    L2_Pharmacy_Invalid --> L2_Pharmacy
+    
+    %% L2 Store Branch
+    L2_Store --> |Press 1/2/3| L3_StoreDetail["L3: Store Details"]
+    L2_Store --> |Press 9| L1
+    L2_Store --> |Press 0| L2_Store_Error[Prompt: Please listen carefully]
+    L2_Store_Error --> L2_Store
+    L2_Store --> |Other/Invalid| L2_Store_Invalid[Invalid Selection]
+    L2_Store_Invalid --> L2_Store
+    
+    %% L2 Other Branch
+    L2_Other --> |Press 1/2/3| L3_OtherDetail["L3: Other Inquiries Detail"]
+    L2_Other --> |Press 9| L1
+    L2_Other --> |Press 0| L2_Other_Error[Prompt: Please listen carefully]
+    L2_Other_Error --> L2_Other
+    L2_Other --> |Other/Invalid| L2_Other_Invalid[Invalid Selection]
+    L2_Other_Invalid --> L2_Other
+    
+    %% L3 All paths converge to L4 Identity
+    L3_Pickup --> |Press 1/2/3| L4_Identity["L4: Identity Verification"]
+    L3_Pickup --> |Press 0| L3_Pickup_Error[Prompt: Please listen carefully]
+    L3_Pickup_Error --> L3_Pickup
+    L3_Pickup --> |Other/Invalid| L3_Pickup_Invalid[Invalid Selection]
+    L3_Pickup_Invalid --> L3_Pickup
+    
+    L3_Status --> |Press 1/2/3| L4_Identity
+    L3_Status --> |Press 0| L3_Status_Error[Prompt: Please listen carefully]
+    L3_Status_Error --> L3_Status
+    L3_Status --> |Other/Invalid| L3_Status_Invalid[Invalid Selection]
+    L3_Status_Invalid --> L3_Status
+    
+    L3_Billing --> |Press 1/2/3| L4_Identity
+    L3_Billing --> |Press 0| L3_Billing_Error[Prompt: Please listen carefully]
+    L3_Billing_Error --> L3_Billing
+    L3_Billing --> |Other/Invalid| L3_Billing_Invalid[Invalid Selection]
+    L3_Billing_Invalid --> L3_Billing
+    
+    %% L3 Store Detail Special Handling
+    L3_StoreDetail --> |Press 1| L3_StoreDetail[Repeat Menu]
+    L3_StoreDetail --> |Press 2| L4_Identity
+    L3_StoreDetail --> |Press 9| L2_Store
+    L3_StoreDetail --> |Press 0| L3_StoreDetail_Error[Prompt: Please listen carefully]
+    L3_StoreDetail_Error --> L3_StoreDetail
+    L3_StoreDetail --> |Other/Invalid| L3_StoreDetail_Invalid[Invalid Selection]
+    L3_StoreDetail_Invalid --> L3_StoreDetail
+    
+    %% L3 Other Detail
+    L3_OtherDetail --> |Press 1/2| L4_Identity
+    L3_OtherDetail --> |Press 9| L2_Other
+    L3_OtherDetail --> |Press 0| L3_OtherDetail_Error[Prompt: Please listen carefully]
+    L3_OtherDetail_Error --> L3_OtherDetail
+    L3_OtherDetail --> |Other/Invalid| L3_OtherDetail_Invalid[Invalid Selection]
+    L3_OtherDetail_Invalid --> L3_OtherDetail
+    
+    %% L4 Identity Verification Method Selection
+    L4_Identity --> |Press 1| L4_Collect_RX["L4: Collect RX Number"]
+    L4_Identity --> |Press 2| L4_Collect_DOB["L4: Collect Date of Birth"]
+    L4_Identity --> |Press 3| L4_Collect_PIN["L4: Collect PIN"]
+    L4_Identity --> |3 Failures| L3_Status
+    L4_Identity --> |Other/Invalid| L4_Identity_Invalid[Invalid Selection]
+    L4_Identity_Invalid --> L4_Identity
+    
+    %% L4 Collect Verification Processing
+    L4_Collect_RX --> L4_Collect_Verify{Verification Result}
+    L4_Collect_DOB --> L4_Collect_Verify
+    L4_Collect_PIN --> L4_Collect_Verify
+    
+    L4_Collect_Verify --> |Verification Success| L5_Confirm["L5: Confirmation"]
+    L4_Collect_Verify --> |"Verification Failed
+    Failures < 3"| L4_Identity
+    L4_Collect_Verify --> |"Verification Failed
+    Failures ≥ 3"| L3_Status
+    
+    %% L5 Final Confirmation and Transfer
+    L5_Confirm --> |Press 1| Hangup["Hangup
+    Automated service unavailable"]
+    L5_Confirm --> |Press 2| L5_Confirm["Repeat Menu"]
+    L5_Confirm --> |"Press 3 Identity Verified"| Transfer["Transfer to Agent"]
+    L5_Confirm --> |"Press 3
+    Identity Not Verified"| L4_Identity_Error[Unable to transfer]
+    L4_Identity_Error --> L4_Identity
+    L5_Confirm --> |"Press 3
+    20% Rejection Rate"| L5_Confirm_Reject[All agents busy]
+    L5_Confirm_Reject --> L5_Confirm
+    L5_Confirm --> |Press 0| L5_Confirm_Error[Prompt: Please listen carefully]
+    L5_Confirm_Error --> L5_Confirm
+    L5_Confirm --> |Other/Invalid| L5_Confirm_Invalid[Invalid Selection]
+    L5_Confirm_Invalid --> L5_Confirm
+    
+    %% Styles
+    classDef level1 fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef level2 fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef level3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef level4 fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef level5 fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef error fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef finalState fill:#f1f8e9,stroke:#33691e,stroke-width:3px
+    
+    class L1 level1
+    class L2_Pharmacy,L2_Store,L2_Other level2
+    class L3_Pickup,L3_Status,L3_Billing,L3_StoreDetail,L3_OtherDetail level3
+    class L4_Identity,L4_Collect_RX,L4_Collect_DOB,L4_Collect_PIN level4
+    class L5_Confirm level5
+    class L1_Error,L2_Pharmacy_Error,L2_Store_Error,L2_Other_Error,L3_Pickup_Error,L3_Status_Error,L3_Billing_Error,L3_StoreDetail_Error,L3_OtherDetail_Error,L4_Identity_Error,L5_Confirm_Error error
+    class Hangup,Transfer finalState
