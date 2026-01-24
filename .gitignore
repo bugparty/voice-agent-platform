@@ -1,0 +1,8 @@
+apps/web/node_modules/
+node_modules/.pnpm/
+apps/media-service/node_modules
+apps/ai-audio-service/node_modules
+apps/web/.next/
+**/*.pyc
+node_modules/
+

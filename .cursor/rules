@@ -1,0 +1,72 @@
+# VoIP Agent 项目规则
+
+## 项目概述
+这是一个 VoIP 代理系统，采用 Node.js + Python 混合架构，集成 Twilio Media Streams 和 AI 音频处理能力。
+
+## 技术栈
+- **包管理**: pnpm workspaces (Monorepo)
+- **前端**: Next.js 14+ (App Router)
+- **状态管理**: XState v5
+- **后端运行时**: Node.js 18+ / Python 3.10+
+- **通信协议**: gRPC (bidirectional streaming)
+- **VAD 模型**: Silero VAD (ONNX)
+
+## 架构原则
+1. **Node.js**: 只做 I/O、状态管理、Twilio 控制（不做 DSP、不跑模型）
+2. **Python**: 集中处理所有音频 & AI 推理（VAD / ASR / 分类 / TTS）
+3. **gRPC Streaming**: 低延迟、强顺序、易扩展
+4. **事件驱动**: UI 和系统状态完全由事件驱动
+
+## 项目结构
+```
+repo/
+  apps/
+    web/                      # Next.js UI + BFF endpoints
+    media-service/            # Node: Twilio Media Streams WS + gRPC client + call control
+    ai-audio-service/         # Python: gRPC server + VAD(+ASR/分类预留)
+  packages/
+    proto/                    # .proto + 生成脚本
+    event-schema/             # TS/Zod 事件契约 + JSON schema + mock events
+    shared-config/            # eslint/tsconfig/prettier
+  infra/
+    docker/                   # Dockerfiles
+    compose/                  # docker-compose for local dev
+  docs/                       # 架构文档、UI spec、runbooks
+```
+
+## 编码规范
+- 使用 TypeScript (Node.js 部分)
+- 使用 Python 3.10+ (AI 音频服务)
+- 遵循项目现有的代码风格
+- 所有事件必须符合 `packages/event-schema` 定义
+- gRPC 接口定义在 `packages/proto` 中
+
+## 关键设计点
+- **音频流**: Twilio → Node (WS) → Python (gRPC) → VAD → 事件回 Node → UI
+- **Barge-in**: VAD 检测到 SPEECH_START 时立即停止 TTS 播放
+- **状态机**: 使用 XState v5 管理通话、Agent、VAD 状态
+- **事件统一**: 所有系统事件通过 `event-schema` 统一格式
+
+## 开发注意事项
+- **实现前必读**: 在实现任何功能之前，必须先查看 `docs/` 文件夹中的相关文档，了解架构设计、模块结构、产品设计等关键信息
+- 音频处理集中在 Python，Node 不做解码/重采样
+- 保持模块边界清晰：web 只做 UI，media-service 做 glue，ai-audio-service 做 AI
+- 新功能优先考虑事件驱动架构
+- 保持低延迟设计（VAD 单帧 <1ms）
+
+Mermaid generation constraints:
+
+1) Do NOT use Mermaid syntax keywords, styling keywords, or diagram-type keywords as node IDs, class names, or style names.
+   Forbidden examples include (but are not limited to):
+   graph, flowchart, subgraph, end, classDef, class, style, linkStyle, click, default, gantt, pie, stateDiagram.
+   Also avoid using these words as prefixes or exact matches.
+   If similar meaning is needed, use a business prefix/suffix, e.g. node_end, cls_default_node.
+
+2) Do NOT use HTML <br/> line breaks in node text, especially mixed with long text and double quotes.
+   Instead:
+   - Use ["text"] node form for labels
+   - Use normal literal newlines in the label text (not <br/>)
+   - For internal quotes, prefer single quotes, or properly escape double quotes.
+
+3) When in doubt, generate stable identifiers like: n_<topic>_<number>, cls_<topic>_<number>, st_<topic>_<number>.
+Never use reserved Mermaid keywords anywhere in identifiers.

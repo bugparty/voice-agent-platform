@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package audioai;
+
+service AudioAI {
+  rpc Stream(stream AudioChunk) returns (stream VadEvent);
+}
+
+message AudioChunk {
+  string session_id = 1;
+  uint32 seq = 2;
+  string codec = 3;
+  bytes payload = 4;
+  uint64 timestamp_ms = 5;
+}
+
+message VadEvent {
+  string session_id = 1;
+  string event = 2;
+  float prob = 3;
+  uint64 timestamp_ms = 4;
+}
