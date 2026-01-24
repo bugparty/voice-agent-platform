@@ -24,12 +24,6 @@ type CallState = {
   vadRemote: "SILENT" | "SPEAKING";
   vadProb: number;
   musicProb: number;
-  ivrState?: string;
-  lastDtmf?: {
-    digits?: string;
-    status?: string;
-    reason?: string;
-  };
 };
 
 type UserState = {
@@ -56,7 +50,6 @@ export default function Page() {
   const [callState, setCallState] = useState<CallState>(DEFAULT_CALL_STATE);
   const [userState, setUserState] = useState<UserState>(DEFAULT_USER_STATE);
   const [error, setError] = useState<string | null>(null);
-  const [dtmfDigits, setDtmfDigits] = useState<string>("");
   
   const baseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_MEDIA_SERVICE_URL || "http://localhost:4001",
@@ -95,19 +88,6 @@ export default function Page() {
           const prob = Number(event.payload?.prob ?? 0);
           setCallState((prev) => ({ ...prev, vadProb: prob, musicProb }));
         }
-      }
-      if (event.category === "DTMF") {
-        const digits = String(event.payload?.digits ?? "");
-        const status = String(event.payload?.event ?? "");
-        const reason = String(event.payload?.reason ?? "");
-        setCallState((prev) => ({
-          ...prev,
-          lastDtmf: { digits, status, reason }
-        }));
-      }
-      if (event.category === "IVR") {
-        const state = String(event.payload?.event ?? "");
-        setCallState((prev) => ({ ...prev, ivrState: state }));
       }
     });
     return () => {
@@ -246,39 +226,6 @@ export default function Page() {
     setUserState((prev) => ({ ...prev, isMuted: muted }));
   }
 
-  async function sendDtmfRequest(endpoint: string) {
-    try {
-      setError(null);
-      if (!dtmfDigits.trim()) {
-        setError("Enter digits before sending");
-        return;
-      }
-      if (!callState.sessionId && !callState.callSid) {
-        setError("No active call session");
-        return;
-      }
-      const res = await fetch(`${baseUrl}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: callState.sessionId,
-          callSid: callState.callSid,
-          digits: dtmfDigits.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        setError(data.error || "DTMF request failed");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "DTMF request failed");
-    }
-  }
-
-  function handleDigitPress(digit: string) {
-    setDtmfDigits((prev) => `${prev}${digit}`);
-  }
-
   const canJoin = callState.callStatus === "IN_CALL" && userState.deviceStatus === "disconnected";
   const canLeave = userState.deviceStatus === "in-call";
   const canMute = userState.deviceStatus === "in-call";
@@ -312,10 +259,6 @@ export default function Page() {
         <div className="status-pill">
           <span>User</span>
           <strong>{userState.deviceStatus.toUpperCase()}</strong>
-        </div>
-        <div className="status-pill">
-          <span>IVR</span>
-          <strong>{callState.ivrState ?? "ivr.idle"}</strong>
         </div>
         {userState.deviceStatus === "in-call" && (
           <div className="status-pill">
@@ -377,43 +320,8 @@ export default function Page() {
             <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
               <div>Session: {callState.sessionId}</div>
               <div>Conference: {callState.confName}</div>
-              {callState.lastDtmf?.digits && (
-                <div>
-                  Last DTMF: {callState.lastDtmf.digits} ({callState.lastDtmf.status || "unknown"})
-                </div>
-              )}
             </div>
           )}
-        </div>
-        <div className="panel">
-          <h3>DTMF Keypad</h3>
-          <p>Send digits manually or queue for prompt.</p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-            <input
-              value={dtmfDigits}
-              onChange={(e) => setDtmfDigits(e.target.value)}
-              placeholder="Digits (0-9,*,#,w)"
-              style={{ flex: "1 1 200px" }}
-            />
-            <button onClick={() => setDtmfDigits("")} className="secondary">
-              Clear
-            </button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 60px)", gap: 6 }}>
-            {["1","2","3","4","5","6","7","8","9","*","0","#"].map((digit) => (
-              <button key={digit} onClick={() => handleDigitPress(digit)}>
-                {digit}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-            <button onClick={() => sendDtmfRequest("/call/dtmf")}>
-              Send Now
-            </button>
-            <button className="secondary" onClick={() => sendDtmfRequest("/ivr/next-digits")}>
-              Queue For Prompt
-            </button>
-          </div>
         </div>
         <div className="panel">
           <h3>Timeline</h3>
