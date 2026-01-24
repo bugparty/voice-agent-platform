@@ -57,7 +57,7 @@ function emitTwilio({ callSid, streamSid, event, data, ts }) {
   emitUiEvent(twilioEvent({ callSid, streamSid, event, data, ts }));
 }
 
-function emitVad({ session, action, prob = 0.8, track }) {
+function emitVad({ session, action, prob = 0.8, track, musicProb = 0.0 }) {
   const ts = Date.now() - session.callStartAt;
   // Map track to source: "inbound" -> "remote", "outbound" -> "local"
   const source = track === "outbound" ? "local" : "remote";
@@ -66,7 +66,8 @@ function emitVad({ session, action, prob = 0.8, track }) {
       ts,
       source,
       action,
-      prob
+      prob,
+      musicProb
     })
   );
 }
@@ -335,35 +336,70 @@ wss.on("connection", (socket) => {
         session = createSession({ streamSid, callSid });
       }
       if (config.usePythonVad && audioAiClient) {
+        // Initialize reconnect state for this session
+        if (!session.grpcReconnectState) {
+          session.grpcReconnectState = {
+            retryCount: 0,
+            maxRetries: 2,  // Maximum 2 retry attempts
+            baseDelay: 2000,  // Start with 2 seconds
+            maxDelay: 10000,  // Max 10 seconds between retries
+            isReconnecting: false
+          };
+        }
+        
         // Helper function to create gRPC stream
         const createGrpcStream = () => {
           console.log(`[media-service] Creating gRPC stream for session ${sessionId || streamSid}`);
           const grpcStream = audioAiClient.Stream();
           
           grpcStream.on("data", (event) => {
+            // Reset retry count on successful data reception
+            if (session.grpcReconnectState) {
+              session.grpcReconnectState.retryCount = 0;
+            }
             const action = mapVadAction(event.event);
             if (!action) return;
+            
+            // Extract music_prob (gRPC uses snake_case due to keepCase: true)
+            // Check both snake_case and camelCase for compatibility
+            const musicProb = (event.music_prob !== undefined && event.music_prob !== null) 
+              ? event.music_prob 
+              : (event.musicProb !== undefined && event.musicProb !== null)
+                ? event.musicProb
+                : 0.0;
+            
+            // Debug: log all event fields for first few events and when music is detected
+            if (!session._vadEventCount) {
+              session._vadEventCount = 0;
+            }
+            session._vadEventCount++;
+            
+            if (musicProb > 0.1 || session._vadEventCount <= 10) {
+              console.log(`[media-service] VAD event #${session._vadEventCount}: action=${action}, prob=${event.prob}, music_prob=${musicProb}, has_music_prob=${event.music_prob !== undefined}, has_musicProb=${event.musicProb !== undefined}, all_fields=${Object.keys(event).join(',')}, event_obj=${JSON.stringify(event)}`);
+            }
+            
             emitVad({
               session,
               action,
               prob: event.prob ?? 0.8,
-              track: event.track || "inbound"
+              track: event.track || "inbound",
+              musicProb: musicProb
             });
           });
           
           grpcStream.on("error", (error) => {
-            console.error("[media-service] gRPC stream error", error.message);
+            console.error(`[media-service] gRPC stream error ${error.code || ''} ${error.message}`);
             // Mark stream as invalid
             if (session.grpcStream === grpcStream) {
               session.grpcStream = null;
             }
-            // Try to reconnect after a short delay
-            setTimeout(() => {
-              if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
-                console.log(`[media-service] Attempting to reconnect gRPC stream for session ${sessionId || streamSid}`);
-                session.grpcStream = createGrpcStream();
-              }
-            }, 1000);
+            
+            // Only attempt reconnect if we haven't exceeded max retries
+            if (session.grpcReconnectState && session.grpcReconnectState.retryCount < session.grpcReconnectState.maxRetries) {
+              attemptReconnect();
+            } else {
+              console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
+            }
           });
           
           grpcStream.on("end", () => {
@@ -372,16 +408,60 @@ wss.on("connection", (socket) => {
             if (session.grpcStream === grpcStream) {
               session.grpcStream = null;
             }
-            // Try to reconnect after a short delay
-            setTimeout(() => {
-              if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
-                console.log(`[media-service] Attempting to reconnect gRPC stream for session ${sessionId || streamSid}`);
-                session.grpcStream = createGrpcStream();
-              }
-            }, 1000);
+            
+            // Only attempt reconnect if we haven't exceeded max retries
+            if (session.grpcReconnectState && session.grpcReconnectState.retryCount < session.grpcReconnectState.maxRetries) {
+              attemptReconnect();
+            } else {
+              console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
+            }
           });
           
           return grpcStream;
+        };
+        
+        // Reconnect helper with exponential backoff
+        const attemptReconnect = () => {
+          if (!session || !session.grpcReconnectState) return;
+          
+          const state = session.grpcReconnectState;
+          
+          // Check if we've exceeded max retries
+          if (state.retryCount >= state.maxRetries) {
+            if (!state.hasLoggedMaxRetries) {
+              console.warn(`[media-service] Max reconnection attempts (${state.maxRetries}) reached for session ${sessionId || streamSid}. Stopping reconnection attempts.`);
+              state.hasLoggedMaxRetries = true;
+            }
+            return;
+          }
+          
+          // Prevent multiple simultaneous reconnection attempts
+          if (state.isReconnecting) {
+            return;
+          }
+          
+          state.isReconnecting = true;
+          state.retryCount++;
+          
+          // Calculate exponential backoff delay
+          const delay = Math.min(
+            state.baseDelay * Math.pow(2, state.retryCount - 1),
+            state.maxDelay
+          );
+          
+          console.log(`[media-service] Attempting to reconnect gRPC stream for session ${sessionId || streamSid} (attempt ${state.retryCount}/${state.maxRetries}, delay ${delay}ms)`);
+          
+          setTimeout(() => {
+            state.isReconnecting = false;
+            if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
+              try {
+                session.grpcStream = createGrpcStream();
+              } catch (error) {
+                console.error(`[media-service] Failed to create gRPC stream: ${error.message}`);
+                // Will retry on next attempt
+              }
+            }
+          }, delay);
         };
         
         session.grpcStream = createGrpcStream();
@@ -415,12 +495,46 @@ wss.on("connection", (socket) => {
       // Ensure gRPC stream exists, recreate if needed
       if (config.usePythonVad && audioAiClient) {
         if (!session.grpcStream) {
+          // Initialize reconnect state if not exists
+          if (!session.grpcReconnectState) {
+            session.grpcReconnectState = {
+              retryCount: 0,
+              maxRetries: 2,
+              baseDelay: 2000,
+              maxDelay: 10000,
+              isReconnecting: false
+            };
+          }
+          
+          const state = session.grpcReconnectState;
+          
+          // Check if we've exceeded max retries - if so, stop trying completely
+          if (state.retryCount >= state.maxRetries) {
+            // Only log once per session
+            if (!state.hasLoggedMaxRetries) {
+              console.warn(`[media-service] gRPC stream missing for session ${streamSid}, but max retries (${state.maxRetries}) reached. Stopping all reconnection attempts.`);
+              state.hasLoggedMaxRetries = true;
+            }
+            return; // Don't try to create stream if max retries exceeded
+          }
+          
+          // Don't recreate if already reconnecting
+          if (state.isReconnecting) {
+            return;
+          }
+          
           console.log(`[media-service] gRPC stream missing, recreating for session ${streamSid}`);
+          
           // Recreate gRPC stream helper function
           const createGrpcStream = () => {
             const grpcStream = audioAiClient.Stream();
             
             grpcStream.on("data", (event) => {
+              // Reset retry count on successful data reception
+              if (session.grpcReconnectState) {
+                session.grpcReconnectState.retryCount = 0;
+                session.grpcReconnectState.hasLoggedMaxRetries = false;
+              }
               const action = mapVadAction(event.event);
               if (!action) return;
               emitVad({
@@ -432,16 +546,16 @@ wss.on("connection", (socket) => {
             });
             
             grpcStream.on("error", (error) => {
-              console.error("[media-service] gRPC stream error", error.message);
+              console.error(`[media-service] gRPC stream error ${error.code || ''} ${error.message}`);
               if (session.grpcStream === grpcStream) {
                 session.grpcStream = null;
               }
-              setTimeout(() => {
-                if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
-                  console.log(`[media-service] Attempting to reconnect gRPC stream for session ${streamSid}`);
-                  session.grpcStream = createGrpcStream();
-                }
-              }, 1000);
+              // Only attempt reconnect if we haven't exceeded max retries
+              if (session.grpcReconnectState && session.grpcReconnectState.retryCount < session.grpcReconnectState.maxRetries) {
+                attemptReconnect();
+              } else {
+                console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
+              }
             });
             
             grpcStream.on("end", () => {
@@ -449,15 +563,55 @@ wss.on("connection", (socket) => {
               if (session.grpcStream === grpcStream) {
                 session.grpcStream = null;
               }
-              setTimeout(() => {
-                if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
-                  console.log(`[media-service] Attempting to reconnect gRPC stream for session ${streamSid}`);
-                  session.grpcStream = createGrpcStream();
-                }
-              }, 1000);
+              // Only attempt reconnect if we haven't exceeded max retries
+              if (session.grpcReconnectState && session.grpcReconnectState.retryCount < session.grpcReconnectState.maxRetries) {
+                attemptReconnect();
+              } else {
+                console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
+              }
             });
             
             return grpcStream;
+          };
+          
+          // Reconnect helper with exponential backoff
+          const attemptReconnect = () => {
+            if (!session || !session.grpcReconnectState) return;
+            
+            const reconnectState = session.grpcReconnectState;
+            
+            if (reconnectState.retryCount >= reconnectState.maxRetries) {
+              if (!reconnectState.hasLoggedMaxRetries) {
+                console.warn(`[media-service] Max reconnection attempts (${reconnectState.maxRetries}) reached for session ${streamSid}. Stopping reconnection attempts.`);
+                reconnectState.hasLoggedMaxRetries = true;
+              }
+              return;
+            }
+            
+            if (reconnectState.isReconnecting) {
+              return;
+            }
+            
+            reconnectState.isReconnecting = true;
+            reconnectState.retryCount++;
+            
+            const delay = Math.min(
+              reconnectState.baseDelay * Math.pow(2, reconnectState.retryCount - 1),
+              reconnectState.maxDelay
+            );
+            
+            console.log(`[media-service] Scheduling reconnect for session ${streamSid} (attempt ${reconnectState.retryCount}/${reconnectState.maxRetries}, delay ${delay}ms)`);
+            
+            setTimeout(() => {
+              reconnectState.isReconnecting = false;
+              if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
+                try {
+                  session.grpcStream = createGrpcStream();
+                } catch (error) {
+                  console.error(`[media-service] Failed to create gRPC stream: ${error.message}`);
+                }
+              }
+            }, delay);
           };
           
           session.grpcStream = createGrpcStream();
@@ -472,35 +626,15 @@ wss.on("connection", (socket) => {
           // For outbound PSTN call: we want "inbound" (what PSTN caller is saying)
           const twilioTrack = message.media.track || "inbound";
           
-          // Debug: check raw payload data and track info
-          if (session.seq <= 10 || session.seq % 100 === 0) {
-            const uniqueBytes = new Set(payload).size;
-            const byteRange = [Math.min(...payload), Math.max(...payload)];
-            const allSame = uniqueBytes === 1;
-            const nonZeroBytes = payload.filter(b => b !== 0 && b !== 255).length;
-            console.log(`[media-service] Chunk ${session.seq}: track=${twilioTrack}, ${payload.length} bytes, unique: ${uniqueBytes}, range: [${byteRange[0]}, ${byteRange[1]}], allSame: ${allSame}, nonZeroNonFF: ${nonZeroBytes}`);
-            if (allSame) {
-              console.warn(`[media-service] WARNING: All bytes are ${byteRange[0]} - might be silence or corrupted data`);
-              // Check the raw base64 payload
-              const base64Preview = message.media.payload.substring(0, 20);
-              console.log(`[media-service] Base64 preview: ${base64Preview}...`);
-            }
-            // Log first few bytes as hex for debugging
-            if (session.seq <= 3) {
-              const hexPreview = Array.from(payload.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-              console.log(`[media-service] First 16 bytes (hex): ${hexPreview}`);
-            }
-          }
-          
-          // Track statistics for debugging
+          // Track statistics (minimal logging)
           if (!session.trackStats) {
             session.trackStats = { inbound: 0, outbound: 0, unknown: 0 };
           }
           session.trackStats[twilioTrack] = (session.trackStats[twilioTrack] || 0) + 1;
           
-          // Log track distribution periodically
-          if (session.seq % 100 === 0) {
-            console.log(`[media-service] Track distribution: ${JSON.stringify(session.trackStats)}`);
+          // Log track distribution only every 1000 chunks (reduced frequency)
+          if (session.seq % 1000 === 0) {
+            console.log(`[media-service] Track stats: ${JSON.stringify(session.trackStats)}`);
           }
           
           // Only process "inbound" track (remote speaker) for VAD
@@ -521,11 +655,6 @@ wss.on("connection", (socket) => {
             timestamp_ms: Date.now() - session.callStartAt,
             track: "inbound"  // Remote speaker (PSTN caller)
           };
-          
-          // Log first few chunks for debugging
-          if (session.seq <= 3) {
-            console.log(`[media-service] Sending audio chunk ${session.seq} to gRPC (${payload.length} bytes)`);
-          }
           
           try {
             session.grpcStream.write(audioChunk);

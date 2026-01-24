@@ -21,4 +21,5 @@ message VadEvent {
   float prob = 3;
   uint64 timestamp_ms = 4;
   string track = 5; // matches AudioChunk.track
+  float music_prob = 6; // music detection probability (0.0-1.0)
 }

@@ -23,6 +23,7 @@ type CallState = {
   confName?: string;
   vadRemote: "SILENT" | "SPEAKING";
   vadProb: number;
+  musicProb: number;
 };
 
 type UserState = {
@@ -35,6 +36,7 @@ const DEFAULT_CALL_STATE: CallState = {
   callStatus: "DISCONNECTED",
   vadRemote: "SILENT",
   vadProb: 0,
+  musicProb: 0,
 };
 
 const DEFAULT_USER_STATE: UserState = {
@@ -77,13 +79,14 @@ export default function Page() {
       }
       if (event.category === "VAD") {
         const action = event.payload?.event as string | undefined;
+        const musicProb = Number(event.payload?.musicProb ?? 0);
         if (action?.endsWith(".start")) {
-          setCallState((prev) => ({ ...prev, vadRemote: "SPEAKING" }));
+          setCallState((prev) => ({ ...prev, vadRemote: "SPEAKING", musicProb }));
         } else if (action?.endsWith(".end")) {
-          setCallState((prev) => ({ ...prev, vadRemote: "SILENT", vadProb: 0 }));
+          setCallState((prev) => ({ ...prev, vadRemote: "SILENT", vadProb: 0, musicProb: 0 }));
         } else if (action?.endsWith(".update")) {
           const prob = Number(event.payload?.prob ?? 0);
-          setCallState((prev) => ({ ...prev, vadProb: prob }));
+          setCallState((prev) => ({ ...prev, vadProb: prob, musicProb }));
         }
       }
     });
@@ -247,6 +250,11 @@ export default function Page() {
           <span>VAD Remote</span>
           <strong>{callState.vadRemote}</strong>
           <small>{callState.vadProb.toFixed(2)}</small>
+          {callState.musicProb > 0.3 && (
+            <small style={{ color: "#fbbf24", marginLeft: "8px" }}>
+              🎵 {callState.musicProb.toFixed(2)}
+            </small>
+          )}
         </div>
         <div className="status-pill">
           <span>User</span>
