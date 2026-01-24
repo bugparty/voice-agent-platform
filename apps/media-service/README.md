@@ -55,6 +55,7 @@ pnpm --filter media-service start
 ### Call Control
 - `POST /call/start` - 发起外呼
 - `POST /call/hangup` - 挂断通话
+- `POST /call/dtmf` - 发送 DTMF（digits）
 
 ### TwiML
 - `POST /twiml` - Legacy TwiML (向后兼容)
@@ -66,6 +67,9 @@ pnpm --filter media-service start
 
 ### Events
 - `GET /events` - SSE 事件流（推送给 Web UI）
+
+### IVR
+- `POST /ivr/next-digits` - 设定下一次提示音结束后发送的 digits
 
 ### WebSocket
 - `WS /media` - Twilio Media Streams 连接入口
@@ -110,6 +114,15 @@ src/
 4. 点击 "Call" 按钮
 5. 观察日志中的 session 创建和更新
 6. 点击 "Join Conference" 测试 Web 加入
+
+### DTMF/IVR 快速测试清单
+
+1. 启动 media-service 与 web UI
+2. 点击 "Call" 开始外呼
+3. 在 DTMF Keypad 输入 digits
+4. 点击 "Send Now"（立即发送）或 "Queue For Prompt"（等待提示音结束后发送）
+5. 在 Timeline 中检查 `DTMF` 与 `IVR` 事件状态
+6. 验证在超时或无响应时触发重试/升级
 
 ## 故障排查
 

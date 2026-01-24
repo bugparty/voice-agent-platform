@@ -16,8 +16,15 @@ async function hangupCall({ client, callSid }) {
   return client.calls(callSid).update({ status: "completed" });
 }
 
+async function sendDtmf({ client, callSid, digits }) {
+  return client.calls(callSid).update({
+    twiml: `<Response><Play digits="${digits}"/></Response>`
+  });
+}
+
 module.exports = {
   createTwilioClient,
   startCall,
-  hangupCall
+  hangupCall,
+  sendDtmf
 };
