@@ -7,3 +7,4 @@ apps/web/.next/
 node_modules/
 
 apps/debug_audio/
+apps/ai-audio-service/.venv/
