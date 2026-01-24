@@ -15,6 +15,7 @@ import {
   requestMicPermission,
   type PermissionState,
 } from "../lib/permissions/audio";
+import { Keypad } from "../components/Keypad";
 
 type CallState = {
   callStatus: string;
@@ -226,6 +227,23 @@ export default function Page() {
     setUserState((prev) => ({ ...prev, isMuted: muted }));
   }
 
+  async function handleKeypadPress(digit: string) {
+    try {
+      console.log("[Web UI] Keypad pressed:", digit);
+      // Send DTMF tone to backend
+      await fetch(`${baseUrl}/call/dtmf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          digit,
+          sessionId: callState.sessionId,
+        }),
+      });
+    } catch (err) {
+      console.error("[Web UI] Failed to send DTMF:", err);
+    }
+  }
+
   const canJoin = callState.callStatus === "IN_CALL" && userState.deviceStatus === "disconnected";
   const canLeave = userState.deviceStatus === "in-call";
   const canMute = userState.deviceStatus === "in-call";
@@ -290,6 +308,13 @@ export default function Page() {
               Hangup
             </button>
           </div>
+
+          <h3 style={{ marginTop: "20px" }}>Menu Selection Keypad</h3>
+          <p>Press digits to select menu options during the call.</p>
+          <Keypad 
+            onKeyPress={handleKeypadPress} 
+            disabled={callState.callStatus !== "IN_CALL"}
+          />
 
           <h3 style={{ marginTop: "20px" }}>User Controls</h3>
           <p>Join the conference to speak with the callee.</p>
