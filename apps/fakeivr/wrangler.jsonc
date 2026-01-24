@@ -32,7 +32,8 @@
 	 */
 	"vars": {
 		"BASE_URL": "http://localhost:8787",
-		"AGENT_NUMBER": "+13102540932"
+		"AGENT_NUMBER": "+13102540932",
+		"MAX_CALL_DURATION_MINUTES": "30"
 	},
 	/**
 	 * KV Namespaces for session storage

@@ -12,6 +12,7 @@
  *   1) pnpm install
  *   2) wrangler secret put TWILIO_AUTH_TOKEN    (for webhook validation)
  *      wrangler secret put AGENT_NUMBER         (where to transfer on L5 option 3)
+ *      wrangler secret put MAX_CALL_DURATION_MINUTES  (optional, default: 10 minutes)
  *   3) wrangler dev
  *   4) In Twilio Console → Phone Numbers → Voice → A CALL COMES IN:
  *        Webhook: POST https://your-worker.workers.dev/voice
@@ -112,6 +113,29 @@ function sayInvalidAndRedirect(vr, redirectTo) {
 	vr.redirect({ method: 'POST' }, redirectTo);
 }
 
+// Check if call duration exceeds maximum allowed time
+function checkCallDuration(session, maxDurationMinutes = 10) {
+	if (!session || !session.createdAt) {
+		return { exceeded: false };
+	}
+	const now = Date.now();
+	const elapsed = now - session.createdAt;
+	const maxDurationMs = maxDurationMinutes * 60 * 1000;
+	return {
+		exceeded: elapsed > maxDurationMs,
+		elapsedMinutes: Math.floor(elapsed / 60000),
+		maxDurationMinutes,
+	};
+}
+
+// Return TwiML to hang up due to time limit
+function twimlHangupDueToTimeLimit() {
+	return twiml((vr) => {
+		vr.say({ voice: 'alice' }, 'Thank you for calling. This call has reached the maximum time limit. Goodbye.');
+		vr.hangup();
+	});
+}
+
 function normalizeDigit(d) {
 	if (typeof d !== 'string') return '';
 	return d.trim();
@@ -188,6 +212,7 @@ export default {
 
 		// Get form data for POST requests (must be done before validation)
 		let body = {};
+		const rickRollUrl = env.RICK_ROLL_URL || 'https://www.myinstants.com/media/sounds/epic.mp3';
 		if (method === 'POST') {
 			try {
 				body = await getFormData(request);
@@ -234,6 +259,26 @@ export default {
 			baseUrl,
 			requestUrl: request.url,
 		});
+
+		// Check call duration for POST requests with a session
+		// Skip for entry point to allow new calls
+		if (method === 'POST' && callSid && path !== '/' && path !== '/voice') {
+			const tempSession = await getSession(callSid, env);
+			if (tempSession) {
+				const maxDurationMinutes = env.MAX_CALL_DURATION_MINUTES
+					? parseInt(env.MAX_CALL_DURATION_MINUTES, 10)
+					: 10; // Default 10 minutes
+				const durationCheck = checkCallDuration(tempSession, maxDurationMinutes);
+				if (durationCheck.exceeded) {
+					console.log('[IVR] Call duration exceeded:', {
+						callSid,
+						elapsedMinutes: durationCheck.elapsedMinutes,
+						maxDurationMinutes: durationCheck.maxDurationMinutes,
+					});
+					return twimlHangupDueToTimeLimit();
+				}
+			}
+		}
 
 		// Debug endpoint: GET /debug/session/:callSid
 		if (path.startsWith('/debug/session/') && method === 'GET') {
@@ -284,9 +329,10 @@ export default {
 				console.log('[IVR] Returning TwiML with redirect to:', redirectUrl);
 
 				// Welcome message (configurable via env var)
-				const welcomeMessage = env.WELCOME_MESSAGE || 'Welcome to Side Effect Emporium.';
+				const welcomeMessage = env.WELCOME_MESSAGE || 'Welcome to Side Effect Emporium.While you’re here, may we interest you in our long-term storage solutions?You’ll still be able to see the grass.';
 
 				return twiml((vr) => {
+					vr.play(rickRollUrl)
 					vr.say({ voice: 'alice' }, welcomeMessage);
 					vr.redirect({ method: 'POST' }, redirectUrl);
 				});
@@ -845,7 +891,7 @@ export default {
 					// Play 30 seconds of rick roll music before transferring
 					// Using a publicly available rick roll audio URL (30 second clip)
 					// You can set RICK_ROLL_URL env var to use your own audio file
-					const rickRollUrl = env.RICK_ROLL_URL || 'https://www.myinstants.com/media/sounds/epic.mp3';
+
 					vr.play(rickRollUrl);
 					let greets = ['Thank you for calling. Please remain calm — our confidence exceeds our accuracy',
 						 '“You’ve reached the pharmacy. Any resemblance to real medicine is purely coincidental.',

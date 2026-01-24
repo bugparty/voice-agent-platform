@@ -12,6 +12,7 @@ message AudioChunk {
   string codec = 3;
   bytes payload = 4;
   uint64 timestamp_ms = 5;
+  string track = 6; // "inbound" / "outbound"
 }
 
 message VadEvent {
@@ -19,4 +20,5 @@ message VadEvent {
   string event = 2;
   float prob = 3;
   uint64 timestamp_ms = 4;
+  string track = 5; // matches AudioChunk.track
 }

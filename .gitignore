@@ -6,3 +6,4 @@ apps/web/.next/
 **/*.pyc
 node_modules/
 
+apps/debug_audio/
