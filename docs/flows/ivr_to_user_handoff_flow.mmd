@@ -1,0 +1,65 @@
+flowchart TD
+  n_call_connected["Incoming call connected
+IVR greeting begins"]
+    --> n_language["Language selection
+English
+Spanish
+Other"]
+
+  n_language
+    -- English --> n_callback["Callback option
+Request callback
+Decline callback"]
+
+  n_callback
+    -- Decline callback --> n_mainmenu["Main menu
+Pharmacy services
+Store information
+Other services"]
+
+  n_mainmenu
+    -- Pharmacy services --> n_pharmacy_menu["Pharmacy menu
+Prescription pickup
+Prescription status
+Speak to pharmacy staff
+Other pharmacy options"]
+
+  n_pharmacy_menu
+    -- Speak to pharmacy staff --> n_connect_path["Connect to pharmacy staff
+Transfer attempt begins"]
+
+  n_connect_path
+    --> n_identity_gate{"Identity verification requested
+Name
+Date of birth
+Prescription number
+PIN"}
+
+  n_identity_gate
+    -- Yes --> n_user_takeover["Stop AI navigation
+Prompt user to speak
+Transfer control immediately
+Wait for user input"]
+
+  n_identity_gate
+    -- No --> n_staff_queue["Pharmacy staff queue
+Hold music
+Estimated wait time if available"]
+
+  n_staff_queue
+    --> n_staff_answered{"Pharmacy staff answered?"}
+
+  n_staff_answered
+    -- No --> n_staff_queue
+
+  n_staff_answered
+    -- Yes --> n_user_takeover
+
+  n_user_takeover
+    --> n_copilot_mode["User in call
+Start realtime translation
+Start copilot suggestions
+AI never speaks to staff"]
+
+  n_copilot_mode
+    --> n_call_end["Call ended by user"]
