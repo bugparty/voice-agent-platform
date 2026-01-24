@@ -21,12 +21,28 @@ function createSession({ streamSid, callSid, sessionId, confName }) {
     callSid,
     webCallSid: null,
     state: 'CALLING',
+    phase: "IVR",
     createdAt: Date.now(),
     callStartAt: Date.now(),
     lastAudioAt: null,
+    lastDtmfAt: 0,
     vadMock: null,
     grpcStream: null,
-    seq: 0
+    seq: 0,
+    ivrConfig: {
+      promptTimeoutMs: 4000,
+      responseTimeoutMs: 6000,
+      retryDelayMs: 1500,
+      maxRetries: 2
+    },
+    ivr: {
+      state: "idle",
+      pendingDigits: null,
+      lastDigits: null,
+      attempts: 0,
+      lastPromptAt: null,
+      lastVadEndAt: null
+    }
   };
   
   // Always store by sessionId
