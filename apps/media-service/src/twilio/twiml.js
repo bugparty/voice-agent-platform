@@ -1,5 +1,46 @@
 const { twiml } = require("twilio");
 
+/**
+ * Build TwiML for outbound PSTN leg joining conference with Media Stream
+ */
+function buildOutboundConferenceTwiml({ publicBaseUrl, mediaWsPath, sessionId, confName }) {
+  const response = new twiml.VoiceResponse();
+  const wsUrl = publicBaseUrl.replace(/^http/, "ws") + mediaWsPath;
+  
+  // Start Media Stream
+  const start = response.start();
+  const stream = start.stream({ url: wsUrl });
+  stream.parameter({ name: "session_id", value: sessionId });
+  stream.parameter({ name: "role", value: "pstn" });
+  
+  // Join conference
+  const dial = response.dial();
+  dial.conference({
+    startConferenceOnEnter: true,
+    endConferenceOnExit: true
+  }, confName);
+  
+  return response.toString();
+}
+
+/**
+ * Build TwiML for web user joining conference
+ */
+function buildWebJoinConferenceTwiml({ confName }) {
+  const response = new twiml.VoiceResponse();
+  
+  const dial = response.dial();
+  dial.conference({
+    startConferenceOnEnter: false,
+    endConferenceOnExit: false
+  }, confName);
+  
+  return response.toString();
+}
+
+/**
+ * Legacy TwiML builder (kept for backward compatibility)
+ */
 function buildTwiml({ publicBaseUrl, mediaWsPath }) {
   const response = new twiml.VoiceResponse();
   const wsUrl = publicBaseUrl.replace(/^http/, "ws") + mediaWsPath;
@@ -10,5 +51,7 @@ function buildTwiml({ publicBaseUrl, mediaWsPath }) {
 }
 
 module.exports = {
-  buildTwiml
+  buildTwiml,
+  buildOutboundConferenceTwiml,
+  buildWebJoinConferenceTwiml
 };
