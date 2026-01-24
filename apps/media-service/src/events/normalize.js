@@ -23,16 +23,24 @@ function twilioEvent({ ts, callSid, streamSid, event, data }) {
   });
 }
 
-function vadEvent({ ts, source, action, prob }) {
-  return buildEvent({
+function vadEvent({ ts, source, action, prob, musicProb }) {
+  const event = buildEvent({
     category: "VAD",
     payload: {
       source,
       event: `vad.${source}.${action}`,
-      prob
+      prob,
+      musicProb: musicProb ?? 0.0
     },
     ts
   });
+  
+  // Debug: log music events (reduced frequency)
+  if ((musicProb ?? 0) > 0.3) {
+    console.log(`[normalize] VAD event with music: musicProb=${musicProb}`);
+  }
+  
+  return event;
 }
 
 function conferenceEvent({ ts, sessionId, confName, event, data }) {

@@ -1,4 +1,4 @@
-"""gRPC server for AI Audio Service with Silero VAD."""
+"""gRPC server for AI Audio Service with MediaPipe Audio Classifier."""
 
 import importlib
 import os
@@ -6,13 +6,14 @@ import sys
 import time
 from concurrent import futures
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 import grpc
 import numpy as np
 
 from .audio.decoder import AudioDecoder
-from .vad.silero import SileroVadProcessor
+from .vad.silero import SileroVadProcessor  # Keep for reference
+from .vad.mediapipeclassifer import MediaPipeClassifier
 from .vad.state_machine import VadStateMachine
 
 
@@ -73,11 +74,11 @@ def load_proto():
 class SessionProcessor:
     """Processes audio for a single session+track combination."""
     
-    def __init__(self, session_id: str, track: str, vad_processor: SileroVadProcessor):
+    def __init__(self, session_id: str, track: str, classifier: MediaPipeClassifier):
         self.session_id = session_id
         self.track = track or "inbound"  # Default to inbound
         self.decoder = AudioDecoder()
-        self.vad_processor = vad_processor
+        self.classifier = classifier
         self.state_machine = VadStateMachine()
     
     def process_chunk(self, mulaw_bytes: bytes, timestamp_ms: int):
@@ -133,48 +134,64 @@ class SessionProcessor:
                     except Exception as e:
                         print(f"[audio-check] Could not save audio: {e}")
             
-            # Run VAD
-            prob = self.vad_processor.process_frame(frame)
+            # Run MediaPipe classifier (returns speech_prob, music_prob)
+            speech_prob, music_prob = self.classifier.process_frame(frame)
             
-            # Debug: log VAD probability periodically
+            # Use speech probability for VAD
+            prob = speech_prob
+            
+            # Debug: log classification results periodically
             if not hasattr(self, '_frame_count'):
                 self._frame_count = 0
             self._frame_count += 1
             
-            # Frame logging removed to reduce noise
+            # Debug: log both speech and music for first 10 frames, then every 50 frames
+            if self._frame_count <= 10 or self._frame_count % 50 == 0:
+                print(f"[MediaPipe] Frame {self._frame_count}: speech={speech_prob:.3f}, music={music_prob:.3f}")
             
-            # Update state machine
+            # Update state machine with speech probability
             event = self.state_machine.process(prob, timestamp_ms)
             
+            # Force emit SPEECH_UPDATE when music is detected (> 0.5) even if no speech event
+            # This ensures music_prob gets sent to frontend
+            if not event and music_prob > 0.5 and self._frame_count % 5 == 0:
+                event = "SPEECH_UPDATE"  # Use existing event type to carry music_prob
+            
             if event:
-                # Log VAD state changes
-                print(f"[VAD] {self.session_id[:8]}.../{self.track}: {event} (prob={prob:.3f}, ts={timestamp_ms}ms)")
+                # Log VAD state changes with music info
+                music_info = f", music={music_prob:.3f}" if music_prob > 0.1 else ""
+                print(f"[VAD] {self.session_id[:8]}.../{self.track}: {event} (speech={prob:.3f}{music_info}, ts={timestamp_ms}ms)")
                 yield {
                     "event": event,
                     "prob": prob,
-                    "timestamp_ms": timestamp_ms
+                    "timestamp_ms": timestamp_ms,
+                    "music_prob": music_prob  # Include music probability in event
                 }
     
     def flush(self):
         """Flush remaining buffer and return final event if needed."""
         frame = self.decoder.flush()
         if frame is not None:
-            prob = self.vad_processor.process_frame(frame)
+            speech_prob, music_prob = self.classifier.process_frame(frame)
+            prob = speech_prob
             event = self.state_machine.process(prob, self.state_machine.last_timestamp_ms)
             if event:
                 return {
                     "event": event,
                     "prob": prob,
-                    "timestamp_ms": self.state_machine.last_timestamp_ms
+                    "timestamp_ms": self.state_machine.last_timestamp_ms,
+                    "music_prob": music_prob
                 }
         
         # Check if we need to send SPEECH_END
         was_speaking = self.state_machine.reset()
         if was_speaking:
+            print(f"[VAD] {self.session_id[:8]}.../{self.track}: SPEECH_END (final)")
             return {
                 "event": "SPEECH_END",
                 "prob": 0.0,
-                "timestamp_ms": self.state_machine.last_timestamp_ms
+                "timestamp_ms": self.state_machine.last_timestamp_ms,
+                "music_prob": 0.0
             }
         return None
 
@@ -184,21 +201,41 @@ class AudioAIService:
     
     def __init__(self, audioai_pb2):
         self.audioai_pb2 = audioai_pb2
-        # Shared VAD processor (model is loaded once)
-        self.vad_processor = SileroVadProcessor()
+        # Shared MediaPipe classifier (model is loaded once)
+        # Note: SileroVadProcessor is kept for reference but not used
+        
+        print("[AudioAI] Initializing MediaPipe Audio Classifier...")
+        try:
+            import traceback
+            self.classifier = MediaPipeClassifier()
+            print("[AudioAI] ✓ MediaPipe Audio Classifier loaded successfully (speech + music detection)")
+        except Exception as e:
+            print(f"[AudioAI] ✗ Failed to load MediaPipe classifier: {e}")
+            import traceback
+            traceback.print_exc()
+            print("[AudioAI] Exiting - MediaPipe is required")
+            raise RuntimeError(f"MediaPipe classifier failed to load: {e}") from e
+        
         # Per-session processors: key is (session_id, track)
         self.processors: Dict[Tuple[str, str], SessionProcessor] = {}
     
     def _get_processor(self, session_id: str, track: str) -> SessionProcessor:
         """Get or create a processor for a session+track combination."""
-        key = (session_id, track or "inbound")
+        # Normalize track
+        track = track or "inbound"
+        key = (session_id, track)
+        
         if key not in self.processors:
-            print(f"[VAD] New session: {session_id[:8]}.../{track or 'inbound'}")
+            print(f"[VAD] New session: {session_id[:8]}.../{track} (total sessions: {len(self.processors) + 1})")
+            if not self.classifier:
+                raise RuntimeError("MediaPipe classifier not available - service should not have started")
+            
             self.processors[key] = SessionProcessor(
                 session_id=session_id,
-                track=track or "inbound",
-                vad_processor=self.vad_processor
+                track=track,
+                classifier=self.classifier
             )
+        
         return self.processors[key]
     
     def Stream(self, request_iterator, context):
@@ -229,6 +266,11 @@ class AudioAIService:
                     print(f"[VAD] Received chunk {chunk_count}: session={session_id[:8]}..., track={track}, seq={chunk.seq if hasattr(chunk, 'seq') else 'N/A'}, payload={payload_len} bytes, ts={timestamp_ms}ms")
                 
                 # Get processor for this session+track
+                # Debug: log session key for first few chunks
+                if chunk_count <= 5:
+                    key = (session_id, track or "inbound")
+                    print(f"[VAD] Debug: chunk {chunk_count}, session_id={session_id[:8]}..., track={track}, key={key}, existing_keys={list(self.processors.keys())[:3]}")
+                
                 processor = self._get_processor(session_id, track)
                 
                 # Process audio chunk
@@ -237,13 +279,27 @@ class AudioAIService:
                     event_count += 1
                     # Emit event via gRPC - ensure track is always set
                     event_track = track or "inbound"
-                    yield self.audioai_pb2.VadEvent(
+                    music_prob = event_data.get("music_prob", 0.0)
+                    
+                    # Debug: log music_prob for all events (first few) or when significant
+                    if music_prob > 0.1 or event_count <= 5:
+                        print(f"[VAD] Sending event: event={event_data['event']}, prob={event_data['prob']:.3f}, music_prob={music_prob:.3f}")
+                    
+                    # Create VadEvent with all fields including music_prob
+                    vad_event = self.audioai_pb2.VadEvent(
                         session_id=session_id,
                         event=event_data["event"],
                         prob=event_data["prob"],
                         timestamp_ms=event_data["timestamp_ms"],
-                        track=event_track
+                        track=event_track,
+                        music_prob=music_prob  # Include music probability (always set, even if 0.0)
                     )
+                    
+                    # Debug: verify music_prob is set (first few events)
+                    if event_count <= 5:
+                        print(f"[VAD] VadEvent created: event={event_data['event']}, prob={event_data['prob']:.3f}, music_prob={vad_event.music_prob:.3f}")
+                    
+                    yield vad_event
                 
                 # Log if no events were generated (might indicate buffering)
                 if event_count == 0 and chunk_count % 50 == 0:
@@ -251,7 +307,7 @@ class AudioAIService:
         
         finally:
             # Cleanup: flush and send final events
-            if session_id:
+            if session_id and track:
                 final_track = track or "inbound"
                 key = (session_id, final_track)
                 if key in self.processors:
@@ -264,7 +320,8 @@ class AudioAIService:
                             event=final_event["event"],
                             prob=final_event["prob"],
                             timestamp_ms=final_event["timestamp_ms"],
-                            track=final_track
+                            track=final_track,
+                            music_prob=final_event.get("music_prob", 0.0)  # Include music probability
                         )
                     # Remove processor
                     print(f"[VAD] Session ended: {session_id[:8]}.../{final_track}")
