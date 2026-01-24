@@ -1,39 +1,3 @@
----
-name: Full Agent Integration
-overview: 完整的 Agent 集成方案：Deepgram ASR + Agent 订阅事件 + Agent 命令执行 (用户 Join/Leave、Copilot 文字、DTMF 按键)。
-todos:
-  - id: create-agent-proto
-    content: 创建 packages/proto/agent.proto 完整定义
-    status: pending
-  - id: add-deps
-    content: 安装 @deepgram/sdk 和 gRPC 依赖
-    status: pending
-  - id: create-deepgram
-    content: 创建 Deepgram ASR 模块
-    status: pending
-  - id: create-agent-server
-    content: 创建 Agent gRPC 服务端
-    status: pending
-  - id: create-policy-gate
-    content: 创建 Policy Gate 安全检查模块
-    status: pending
-  - id: add-dtmf-control
-    content: 在 callControl.js 添加 DTMF 发送功能
-    status: pending
-  - id: extend-events
-    content: 扩展事件规范化支持新事件类型
-    status: pending
-  - id: integrate-index
-    content: 在 index.js 集成所有新模块
-    status: pending
-  - id: create-agent-service
-    content: 创建 agent-service Python 服务框架
-    status: pending
-  - id: update-web-copilot
-    content: 添加 Copilot 面板和 Agent 请求 UI
-    status: pending
----
-
 # 完整 Agent 集成方案
 
 ## 架构概览
@@ -94,25 +58,7 @@ flowchart TB
 
 ### 完整命令列表
 
-| 命令类型 | 目标 | 说明 | 示例 |
-
-|----------|------|------|------|
-
-| `SEND_DTMF` | Twilio | 发送 DTMF 按键 | `digits: "1"` |
-
-| `SAY_TTS` | Twilio | AI 语音输出 (Phase 3+) | `text: "请稍等"` |
-
-| `REQUEST_USER_JOIN` | Web UI | 请求用户加入通话 | `reason: "需要身份验证"` |
-
-| `REQUEST_USER_LEAVE` | Web UI | 请求用户离开通话 | `reason: "IVR 导航中"` |
-
-| `COPILOT_HINT` | Web UI | 显示提示文字 | `text: "对方在询问地址"` |
-
-| `COPILOT_SUGGESTION` | Web UI | 显示建议回复 | `text: "请说: 123 Main St"` |
-
-| `WAIT` | None | 等待 (不执行动作) | `reason: "等待对方说完"` |
-
----
+| 命令类型 | 目标 | 说明 | 示例 ||----------|------|------|------|| `SEND_DTMF` | Twilio | 发送 DTMF 按键 | `digits: "1"` || `SAY_TTS` | Twilio | AI 语音输出 (Phase 3+) | `text: "请稍等"` || `REQUEST_USER_JOIN` | Web UI | 请求用户加入通话 | `reason: "需要身份验证"` || `REQUEST_USER_LEAVE` | Web UI | 请求用户离开通话 | `reason: "IVR 导航中"` || `COPILOT_HINT` | Web UI | 显示提示文字 | `text: "对方在询问地址"` || `COPILOT_SUGGESTION` | Web UI | 显示建议回复 | `text: "请说: 123 Main St"` || `WAIT` | None | 等待 (不执行动作) | `reason: "等待对方说完"` |---
 
 ## Proto 定义更新
 
@@ -246,7 +192,7 @@ message CommandResultData {
 
 ### 1. DTMF 发送
 
-```
+```javascript
 Agent                media-service              Twilio
   │                       │                       │
   │  SendDTMF("1")        │                       │
@@ -278,7 +224,7 @@ async function sendDTMF(callSid, digits) {
 
 ### 2. 请求用户 Join/Leave
 
-```
+```javascript
 Agent                media-service              Web UI
   │                       │                       │
   │  RequestUserJoin      │                       │
@@ -324,7 +270,7 @@ if (event.payload?.event === 'ui.request.join') {
 
 ### 3. Copilot 文字输出
 
-```
+```javascript
 Agent                media-service              Web UI
   │                       │                       │
   │  CopilotHint          │                       │
@@ -489,6 +435,8 @@ function CopilotPanel({ hints, suggestion }) {
 }
 ```
 
+
+
 #### Agent 请求提示
 
 ```typescript
@@ -510,77 +458,21 @@ function CopilotPanel({ hints, suggestion }) {
 
 ### Agent 可订阅的事件
 
-| 事件类型 | 来源 | 说明 |
-
-|----------|------|------|
-
-| `vad.remote.start/update/end` | VAD | 远程语音活动 |
-
-| `asr.remote.partial` | Deepgram | 实时转写 |
-
-| `asr.remote.final` | Deepgram | 最终转写 |
-
-| `call.status` | Twilio | 通话状态变化 |
-
-| `user.joined/left/muted` | Web UI | 用户操作 |
-
-| `agent.command.result` | media-service | 命令执行结果 |
+| 事件类型 | 来源 | 说明 ||----------|------|------|| `vad.remote.start/update/end` | VAD | 远程语音活动 || `asr.remote.partial` | Deepgram | 实时转写 || `asr.remote.final` | Deepgram | 最终转写 || `call.status` | Twilio | 通话状态变化 || `user.joined/left/muted` | Web UI | 用户操作 || `agent.command.result` | media-service | 命令执行结果 |
 
 ### Agent 可发送的命令
 
-| 命令类型 | 目标 | 执行方式 |
-
-|----------|------|----------|
-
-| `SEND_DTMF` | Twilio | REST API |
-
-| `SAY_TTS` | Twilio | TwiML (Phase 3) |
-
-| `REQUEST_USER_JOIN` | Web UI | SSE 事件 |
-
-| `REQUEST_USER_LEAVE` | Web UI | SSE 事件 |
-
-| `COPILOT_HINT` | Web UI | SSE 事件 |
-
-| `COPILOT_SUGGESTION` | Web UI | SSE 事件 |
-
----
+| 命令类型 | 目标 | 执行方式 ||----------|------|----------|| `SEND_DTMF` | Twilio | REST API || `SAY_TTS` | Twilio | TwiML (Phase 3) || `REQUEST_USER_JOIN` | Web UI | SSE 事件 || `REQUEST_USER_LEAVE` | Web UI | SSE 事件 || `COPILOT_HINT` | Web UI | SSE 事件 || `COPILOT_SUGGESTION` | Web UI | SSE 事件 |---
 
 ## 文件变更清单
 
 ### 新建文件
 
-| 文件 | 用途 |
-
-|------|------|
-
-| `packages/proto/agent.proto` | Agent 通信协议 |
-
-| `apps/media-service/src/asr/deepgram.js` | Deepgram ASR |
-
-| `apps/media-service/src/grpc/agentServer.js` | Agent gRPC 服务 |
-
-| `apps/media-service/src/policy/gate.js` | 命令安全检查 |
-
-| `apps/agent-service/` | Agent 服务目录 |
-
-| `apps/web/src/components/CopilotPanel.tsx` | Copilot UI |
+| 文件 | 用途 ||------|------|| `packages/proto/agent.proto` | Agent 通信协议 || `apps/media-service/src/asr/deepgram.js` | Deepgram ASR || `apps/media-service/src/grpc/agentServer.js` | Agent gRPC 服务 || `apps/media-service/src/policy/gate.js` | 命令安全检查 || `apps/agent-service/` | Agent 服务目录 || `apps/web/src/components/CopilotPanel.tsx` | Copilot UI |
 
 ### 修改文件
 
-| 文件 | 变更 |
-
-|------|------|
-
-| `apps/media-service/src/index.js` | 集成所有新模块 |
-
-| `apps/media-service/src/events/normalize.js` | 新事件类型 |
-
-| `apps/media-service/src/twilio/callControl.js` | DTMF 发送 |
-
-| `apps/web/src/app/page.tsx` | Copilot UI + Agent 请求 |
-
----
+| 文件 | 变更 ||------|------|| `apps/media-service/src/index.js` | 集成所有新模块 || `apps/media-service/src/events/normalize.js` | 新事件类型 || `apps/media-service/src/twilio/callControl.js` | DTMF 发送 || `apps/web/src/app/page.tsx` | Copilot UI + Agent 请求 |---
 
 ## 验收标准
 
@@ -589,5 +481,3 @@ function CopilotPanel({ hints, suggestion }) {
 3. ✅ Agent 发送 RequestUserJoin，Web UI 显示提示
 4. ✅ Agent 发送 CopilotHint，Web UI 显示提示文字
 5. ✅ Agent 发送 CopilotSuggestion，Web UI 显示建议
-6. ✅ Policy Gate 在 HUMAN 阶段阻止 DTMF 命令
-7. ✅ 所有命令执行结果返回给 Agent

@@ -1,33 +1,3 @@
----
-name: ASR + Agent Integration
-overview: 在 media-service 中集成 Deepgram 实时 ASR，并通过 gRPC 双向流让 Agent Service 订阅 ASR 和 VAD 事件，Agent 通过同一流返回建议。
-todos:
-  - id: create-agent-proto
-    content: 创建 packages/proto/agent.proto 定义 Agent 通信协议
-    status: pending
-  - id: add-deepgram-dep
-    content: 安装 @deepgram/sdk 和 gRPC 依赖到 media-service
-    status: pending
-  - id: create-deepgram-module
-    content: 创建 apps/media-service/src/asr/deepgram.js
-    status: pending
-  - id: create-agent-grpc-server
-    content: 创建 apps/media-service/src/grpc/agentServer.js
-    status: pending
-  - id: integrate-asr-ws
-    content: 在 media WS handler 中集成 Deepgram 音频发送
-    status: pending
-  - id: integrate-event-push
-    content: 修改事件总线支持 Agent gRPC 推送
-    status: pending
-  - id: create-agent-service
-    content: 创建 apps/agent-service/ Python 服务框架
-    status: pending
-  - id: update-web-ui
-    content: 在 Web UI 中添加转写显示
-    status: pending
----
-
 # Deepgram ASR + Agent 订阅集成方案
 
 ## 架构概览
@@ -87,7 +57,7 @@ flowchart TB
 - media-service 作为 **服务端**
 - Agent 作为 **客户端** 订阅事件
 - Agent 通过同一流返回建议
-```
+```javascript
 ┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
 │ ai-audio-service│◄────────│  media-service  │◄────────│  agent-service  │
 │    (Python)     │  gRPC   │    (Node.js)    │  gRPC   │    (Python)     │
@@ -200,6 +170,8 @@ cd apps/media-service
 pnpm add @deepgram/sdk
 ```
 
+
+
 #### A2. 创建 Deepgram 模块
 
 新建 `apps/media-service/src/asr/deepgram.js`:
@@ -234,6 +206,8 @@ cd apps/media-service
 pnpm add @grpc/grpc-js @grpc/proto-loader
 ```
 
+
+
 #### B2. 创建 Agent gRPC 服务
 
 新建 `apps/media-service/src/grpc/agentServer.js`:
@@ -246,6 +220,8 @@ pnpm add @grpc/grpc-js @grpc/proto-loader
 // - 向订阅的 Agent 推送事件
 // - 接收并处理 Agent 建议
 ```
+
+
 
 #### B3. 集成事件推送
 
@@ -271,7 +247,7 @@ function emitUiEvent(event) {
 
 #### C1. 创建服务目录结构
 
-```
+```javascript
 apps/agent-service/
 ├── agent_service/
 │   ├── __init__.py
@@ -284,6 +260,8 @@ apps/agent-service/
 ├── requirements.txt
 └── README.md
 ```
+
+
 
 #### C2. gRPC 客户端实现
 
@@ -320,7 +298,7 @@ class AgentBridgeClient:
 
 ### 1. Agent 订阅会话
 
-```
+```javascript
 Agent                    media-service
   │                           │
   │  Subscribe(session_id)    │
@@ -330,9 +308,11 @@ Agent                    media-service
   │<──────────────────────────│
 ```
 
+
+
 ### 2. 通话中事件流
 
-```
+```javascript
 Twilio    media-service    Deepgram    VAD    Agent
   │            │              │         │       │
   │  audio     │              │         │       │
@@ -354,9 +334,11 @@ Twilio    media-service    Deepgram    VAD    Agent
   │            │───────────────────────────────>│
 ```
 
+
+
 ### 3. Agent 返回建议
 
-```
+```javascript
 Agent                    media-service
   │                           │
   │  AgentSuggestion          │
@@ -389,57 +371,21 @@ MEDIA_SERVICE_GRPC_URL=localhost:50052
 OPENAI_API_KEY=xxx  # 后续 LLM 集成
 ```
 
+
+
 ### 端口分配
 
-| 服务 | 端口 | 用途 |
-
-|------|------|------|
-
-| media-service HTTP | 4001 | REST API |
-
-| media-service WS | 4001 | Media Streams + Events |
-
-| ai-audio-service gRPC | 50051 | VAD 音频处理 |
-
-| **media-service gRPC** | **50052** | **Agent 订阅 (新增)** |
-
----
+| 服务 | 端口 | 用途 ||------|------|------|| media-service HTTP | 4001 | REST API || media-service WS | 4001 | Media Streams + Events || ai-audio-service gRPC | 50051 | VAD 音频处理 || **media-service gRPC** | **50052** | **Agent 订阅 (新增)** |---
 
 ## 文件变更清单
 
 ### 新建文件
 
-| 文件 | 用途 |
-
-|------|------|
-
-| `packages/proto/agent.proto` | Agent 通信协议定义 |
-
-| `apps/media-service/src/asr/deepgram.js` | Deepgram ASR 客户端 |
-
-| `apps/media-service/src/grpc/agentServer.js` | Agent gRPC 服务端 |
-
-| `apps/agent-service/` | Agent Service 完整目录 |
+| 文件 | 用途 ||------|------|| `packages/proto/agent.proto` | Agent 通信协议定义 || `apps/media-service/src/asr/deepgram.js` | Deepgram ASR 客户端 || `apps/media-service/src/grpc/agentServer.js` | Agent gRPC 服务端 || `apps/agent-service/` | Agent Service 完整目录 |
 
 ### 修改文件
 
-| 文件 | 变更 |
-
-|------|------|
-
-| `apps/media-service/package.json` | 添加依赖 |
-
-| `apps/media-service/src/config/env.js` | 添加配置 |
-
-| `apps/media-service/src/index.js` | 集成 Deepgram + 启动 Agent gRPC |
-
-| `apps/media-service/src/events/bus.js` | 添加 Agent 推送 |
-
-| `apps/media-service/src/events/normalize.js` | 添加 ASR 事件 |
-
-| `apps/web/src/app/page.tsx` | 添加转写 UI |
-
----
+| 文件 | 变更 ||------|------|| `apps/media-service/package.json` | 添加依赖 || `apps/media-service/src/config/env.js` | 添加配置 || `apps/media-service/src/index.js` | 集成 Deepgram + 启动 Agent gRPC || `apps/media-service/src/events/bus.js` | 添加 Agent 推送 || `apps/media-service/src/events/normalize.js` | 添加 ASR 事件 || `apps/web/src/app/page.tsx` | 添加转写 UI |---
 
 ## 验收标准
 
@@ -455,4 +401,3 @@ OPENAI_API_KEY=xxx  # 后续 LLM 集成
 5. ✅ Agent 收到 VAD 事件
 6. ✅ Agent 收到 ASR 事件
 7. ✅ Agent 建议被 media-service 接收
-8. ✅ 建议执行结果反馈给 Agent

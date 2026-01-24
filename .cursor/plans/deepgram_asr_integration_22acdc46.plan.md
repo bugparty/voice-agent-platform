@@ -1,27 +1,3 @@
----
-name: Deepgram ASR Integration
-overview: 在 media-service (Node.js) 中集成 Deepgram 实时流式 ASR，实现 PSTN 音频的实时语音转文字，并将转写结果推送到 Web UI。
-todos:
-  - id: add-deepgram-dep
-    content: 安装 @deepgram/sdk 依赖到 media-service
-    status: pending
-  - id: add-env-config
-    content: 添加 DEEPGRAM_API_KEY 等环境变量配置
-    status: pending
-  - id: create-deepgram-module
-    content: 创建 apps/media-service/src/asr/deepgram.js 模块
-    status: pending
-  - id: integrate-ws-handler
-    content: 在 media WS handler 中集成 Deepgram 音频发送
-    status: pending
-  - id: add-asr-events
-    content: 添加 ASR 事件规范化和 SSE 推送
-    status: pending
-  - id: update-web-ui
-    content: 在 Web UI 中添加转写显示
-    status: pending
----
-
 # Deepgram ASR 实时流式集成方案
 
 ## 架构概览
@@ -58,11 +34,13 @@ flowchart LR
     EventBus -->|SSE| Timeline
 ```
 
+
+
 ## 数据流设计
 
 ### 音频路径 (并行处理)
 
-```
+```javascript
 Twilio Media Streams (μ-law 8kHz)
          │
          ▼
@@ -80,6 +58,8 @@ asr.remote.*  vad.remote.*
          ▼
       Event Bus → Web UI
 ```
+
+
 
 ### Deepgram 连接管理
 
@@ -108,6 +88,8 @@ cd apps/media-service
 pnpm add @deepgram/sdk
 ```
 
+
+
 ### 2. 环境变量配置
 
 在 [apps/media-service/src/config/env.js](apps/media-service/src/config/env.js) 添加：
@@ -117,6 +99,8 @@ DEEPGRAM_API_KEY    // Deepgram API Key
 ASR_ENABLED         // 是否启用 ASR (default: true)
 ASR_LANGUAGE        // 语言代码 (default: en-US)
 ```
+
+
 
 ### 3. 创建 Deepgram 客户端模块
 
@@ -139,6 +123,8 @@ ASR_LANGUAGE        // 语言代码 (default: en-US)
 // - endpointing: 300 (ms)
 ```
 
+
+
 ### 4. 修改 media WS handler
 
 在 [apps/media-service/src/index.js](apps/media-service/src/index.js) 中：
@@ -156,6 +142,8 @@ ASR_LANGUAGE        // 语言代码 (default: en-US)
 // 1. 关闭 Deepgram 连接
 // 2. 清理资源
 ```
+
+
 
 ### 5. 扩展事件规范化
 
@@ -178,6 +166,8 @@ function asrEvent({ ts, source, type, text, confidence, isFinal }) {
   };
 }
 ```
+
+
 
 ### 6. Web UI 更新
 
@@ -204,31 +194,11 @@ if (event.category === 'ASR') {
 
 ### 推荐参数
 
-| 参数 | 值 | 说明 |
-
-|------|-----|------|
-
-| model | nova-2 | 最新最准确的模型 |
-
-| language | en-US | 可配置 |
-
-| encoding | mulaw | 匹配 Twilio 格式 |
-
-| sample_rate | 8000 | Twilio 默认采样率 |
-
-| channels | 1 | 单声道 |
-
-| interim_results | true | 启用实时 partial |
-
-| punctuate | true | 自动标点 |
-
-| smart_format | true | 智能格式化 |
-
-| endpointing | 300 | 300ms 静音后结束句子 |
+| 参数 | 值 | 说明 ||------|-----|------|| model | nova-2 | 最新最准确的模型 || language | en-US | 可配置 || encoding | mulaw | 匹配 Twilio 格式 || sample_rate | 8000 | Twilio 默认采样率 || channels | 1 | 单声道 || interim_results | true | 启用实时 partial || punctuate | true | 自动标点 || smart_format | true | 智能格式化 || endpointing | 300 | 300ms 静音后结束句子 |
 
 ### WebSocket URL 格式
 
-```
+```javascript
 wss://api.deepgram.com/v1/listen
   ?model=nova-2
   &language=en-US
@@ -260,6 +230,8 @@ wss://api.deepgram.com/v1/listen
 }
 ```
 
+
+
 ### Final (确定)
 
 ```json
@@ -283,31 +255,11 @@ wss://api.deepgram.com/v1/listen
 
 ### 新建文件
 
-| 文件 | 用途 |
-
-|------|------|
-
-| `apps/media-service/src/asr/deepgram.js` | Deepgram 客户端封装 |
+| 文件 | 用途 ||------|------|| `apps/media-service/src/asr/deepgram.js` | Deepgram 客户端封装 |
 
 ### 修改文件
 
-| 文件 | 变更 |
-
-|------|------|
-
-| `apps/media-service/src/config/env.js` | 添加 Deepgram 配置 |
-
-| `apps/media-service/src/index.js` | 集成 Deepgram 到 media WS handler |
-
-| `apps/media-service/src/events/normalize.js` | 添加 ASR 事件规范化 |
-
-| `apps/media-service/src/sessions/sessionStore.js` | 扩展 session 结构 |
-
-| `apps/media-service/package.json` | 添加 @deepgram/sdk 依赖 |
-
-| `apps/web/src/app/page.tsx` | 添加转写显示 UI |
-
----
+| 文件 | 变更 ||------|------|| `apps/media-service/src/config/env.js` | 添加 Deepgram 配置 || `apps/media-service/src/index.js` | 集成 Deepgram 到 media WS handler || `apps/media-service/src/events/normalize.js` | 添加 ASR 事件规范化 || `apps/media-service/src/sessions/sessionStore.js` | 扩展 session 结构 || `apps/media-service/package.json` | 添加 @deepgram/sdk 依赖 || `apps/web/src/app/page.tsx` | 添加转写显示 UI |---
 
 ## 验收标准
 
@@ -323,4 +275,3 @@ wss://api.deepgram.com/v1/listen
 
 - **本地 ASR**: 用户麦克风转写 (需要额外的音频流)
 - **多语言支持**: 配置化语言切换
-- **Agent 集成**: 将 final 转写发送给 Agent Service 进行理解
