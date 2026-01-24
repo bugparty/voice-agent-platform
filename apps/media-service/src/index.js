@@ -47,16 +47,24 @@ const audioAiClient = config.usePythonVad
     })
   : null;
 
+if (config.usePythonVad) {
+  console.log(`[media-service] Python VAD enabled, gRPC client: ${audioAiClient ? 'created' : 'FAILED'}, address: ${config.aiAudioGrpcUrl}`);
+} else {
+  console.log("[media-service] Python VAD disabled, using mock VAD");
+}
+
 function emitTwilio({ callSid, streamSid, event, data, ts }) {
   emitUiEvent(twilioEvent({ callSid, streamSid, event, data, ts }));
 }
 
-function emitVad({ session, action, prob = 0.8 }) {
+function emitVad({ session, action, prob = 0.8, track }) {
   const ts = Date.now() - session.callStartAt;
+  // Map track to source: "inbound" -> "remote", "outbound" -> "local"
+  const source = track === "outbound" ? "local" : "remote";
   emitUiEvent(
     vadEvent({
       ts,
-      source: "remote",
+      source,
       action,
       prob
     })
@@ -327,20 +335,57 @@ wss.on("connection", (socket) => {
         session = createSession({ streamSid, callSid });
       }
       if (config.usePythonVad && audioAiClient) {
-        const grpcStream = audioAiClient.Stream();
-        grpcStream.on("data", (event) => {
-          const action = mapVadAction(event.event);
-          if (!action) return;
-          emitVad({
-            session,
-            action,
-            prob: event.prob ?? 0.8
+        // Helper function to create gRPC stream
+        const createGrpcStream = () => {
+          console.log(`[media-service] Creating gRPC stream for session ${sessionId || streamSid}`);
+          const grpcStream = audioAiClient.Stream();
+          
+          grpcStream.on("data", (event) => {
+            const action = mapVadAction(event.event);
+            if (!action) return;
+            emitVad({
+              session,
+              action,
+              prob: event.prob ?? 0.8,
+              track: event.track || "inbound"
+            });
           });
-        });
-        grpcStream.on("error", (error) => {
-          console.log("[media-service] gRPC stream error", error.message);
-        });
-        session.grpcStream = grpcStream;
+          
+          grpcStream.on("error", (error) => {
+            console.error("[media-service] gRPC stream error", error.message);
+            // Mark stream as invalid
+            if (session.grpcStream === grpcStream) {
+              session.grpcStream = null;
+            }
+            // Try to reconnect after a short delay
+            setTimeout(() => {
+              if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
+                console.log(`[media-service] Attempting to reconnect gRPC stream for session ${sessionId || streamSid}`);
+                session.grpcStream = createGrpcStream();
+              }
+            }, 1000);
+          });
+          
+          grpcStream.on("end", () => {
+            console.log("[media-service] gRPC stream ended");
+            // Mark stream as invalid
+            if (session.grpcStream === grpcStream) {
+              session.grpcStream = null;
+            }
+            // Try to reconnect after a short delay
+            setTimeout(() => {
+              if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
+                console.log(`[media-service] Attempting to reconnect gRPC stream for session ${sessionId || streamSid}`);
+                session.grpcStream = createGrpcStream();
+              }
+            }, 1000);
+          });
+          
+          return grpcStream;
+        };
+        
+        session.grpcStream = createGrpcStream();
+        console.log(`[media-service] gRPC stream created for ${sessionId || streamSid}`);
       } else {
         session.vadMock = createVadMock({
           onStart: () => emitVad({ session, action: "start" }),
@@ -361,18 +406,139 @@ wss.on("connection", (socket) => {
     if (message.event === "media") {
       const streamSid = message.streamSid;
       const session = getSession(streamSid);
-      if (!session) return;
+      if (!session) {
+        console.warn(`[media-service] Received media but no session found for streamSid: ${streamSid}`);
+        return;
+      }
       session.lastAudioAt = Date.now();
-      if (session.grpcStream) {
-        session.seq += 1;
-        session.grpcStream.write({
-          session_id: streamSid,
-          seq: session.seq,
-          codec: "MULAW_8K",
-          payload: Buffer.from(message.media.payload, "base64"),
-          timestamp_ms: Date.now() - session.callStartAt
-        });
+      
+      // Ensure gRPC stream exists, recreate if needed
+      if (config.usePythonVad && audioAiClient) {
+        if (!session.grpcStream) {
+          console.log(`[media-service] gRPC stream missing, recreating for session ${streamSid}`);
+          // Recreate gRPC stream helper function
+          const createGrpcStream = () => {
+            const grpcStream = audioAiClient.Stream();
+            
+            grpcStream.on("data", (event) => {
+              const action = mapVadAction(event.event);
+              if (!action) return;
+              emitVad({
+                session,
+                action,
+                prob: event.prob ?? 0.8,
+                track: event.track || "inbound"
+              });
+            });
+            
+            grpcStream.on("error", (error) => {
+              console.error("[media-service] gRPC stream error", error.message);
+              if (session.grpcStream === grpcStream) {
+                session.grpcStream = null;
+              }
+              setTimeout(() => {
+                if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
+                  console.log(`[media-service] Attempting to reconnect gRPC stream for session ${streamSid}`);
+                  session.grpcStream = createGrpcStream();
+                }
+              }, 1000);
+            });
+            
+            grpcStream.on("end", () => {
+              console.log("[media-service] gRPC stream ended");
+              if (session.grpcStream === grpcStream) {
+                session.grpcStream = null;
+              }
+              setTimeout(() => {
+                if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
+                  console.log(`[media-service] Attempting to reconnect gRPC stream for session ${streamSid}`);
+                  session.grpcStream = createGrpcStream();
+                }
+              }, 1000);
+            });
+            
+            return grpcStream;
+          };
+          
+          session.grpcStream = createGrpcStream();
+        }
+        
+        if (session.grpcStream) {
+          session.seq = (session.seq || 0) + 1;
+          const payload = Buffer.from(message.media.payload, "base64");
+          
+          // Get track from Twilio message (if available)
+          // Twilio Media Streams: "inbound" = remote speaker (PSTN), "outbound" = local mic
+          // For outbound PSTN call: we want "inbound" (what PSTN caller is saying)
+          const twilioTrack = message.media.track || "inbound";
+          
+          // Debug: check raw payload data and track info
+          if (session.seq <= 10 || session.seq % 100 === 0) {
+            const uniqueBytes = new Set(payload).size;
+            const byteRange = [Math.min(...payload), Math.max(...payload)];
+            const allSame = uniqueBytes === 1;
+            const nonZeroBytes = payload.filter(b => b !== 0 && b !== 255).length;
+            console.log(`[media-service] Chunk ${session.seq}: track=${twilioTrack}, ${payload.length} bytes, unique: ${uniqueBytes}, range: [${byteRange[0]}, ${byteRange[1]}], allSame: ${allSame}, nonZeroNonFF: ${nonZeroBytes}`);
+            if (allSame) {
+              console.warn(`[media-service] WARNING: All bytes are ${byteRange[0]} - might be silence or corrupted data`);
+              // Check the raw base64 payload
+              const base64Preview = message.media.payload.substring(0, 20);
+              console.log(`[media-service] Base64 preview: ${base64Preview}...`);
+            }
+            // Log first few bytes as hex for debugging
+            if (session.seq <= 3) {
+              const hexPreview = Array.from(payload.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+              console.log(`[media-service] First 16 bytes (hex): ${hexPreview}`);
+            }
+          }
+          
+          // Track statistics for debugging
+          if (!session.trackStats) {
+            session.trackStats = { inbound: 0, outbound: 0, unknown: 0 };
+          }
+          session.trackStats[twilioTrack] = (session.trackStats[twilioTrack] || 0) + 1;
+          
+          // Log track distribution periodically
+          if (session.seq % 100 === 0) {
+            console.log(`[media-service] Track distribution: ${JSON.stringify(session.trackStats)}`);
+          }
+          
+          // Only process "inbound" track (remote speaker) for VAD
+          // "outbound" track would be our own mic, which we don't need to analyze
+          if (twilioTrack !== "inbound") {
+            // Skip outbound audio (our own mic)
+            if (session.seq <= 10) {
+              console.log(`[media-service] Skipping ${twilioTrack} track (we only process inbound)`);
+            }
+            return;
+          }
+          
+          const audioChunk = {
+            session_id: streamSid,
+            seq: session.seq,
+            codec: "MULAW_8K",
+            payload: payload,
+            timestamp_ms: Date.now() - session.callStartAt,
+            track: "inbound"  // Remote speaker (PSTN caller)
+          };
+          
+          // Log first few chunks for debugging
+          if (session.seq <= 3) {
+            console.log(`[media-service] Sending audio chunk ${session.seq} to gRPC (${payload.length} bytes)`);
+          }
+          
+          try {
+            session.grpcStream.write(audioChunk);
+          } catch (error) {
+            console.error("[media-service] Error writing to gRPC stream:", error);
+            // Mark stream as invalid so it will be recreated on next media event
+            session.grpcStream = null;
+          }
+        }
       } else {
+        if (!session.vadMock) {
+          console.warn(`[media-service] No gRPC stream or VAD mock for session ${streamSid}`);
+        }
         session.vadMock?.onAudioFrame();
       }
       return;

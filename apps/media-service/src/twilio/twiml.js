@@ -7,7 +7,9 @@ function buildOutboundConferenceTwiml({ publicBaseUrl, mediaWsPath, sessionId, c
   const response = new twiml.VoiceResponse();
   const wsUrl = publicBaseUrl.replace(/^http/, "ws") + mediaWsPath;
   
-  // Start Media Stream
+  // Start Media Stream on the PSTN leg before joining conference
+  // This captures the PSTN leg's audio (both inbound and outbound tracks)
+  // We filter for "inbound" track in Node.js to get the remote caller's audio
   const start = response.start();
   const stream = start.stream({ url: wsUrl });
   stream.parameter({ name: "session_id", value: sessionId });
