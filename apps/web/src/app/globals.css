@@ -59,10 +59,14 @@ button.secondary {
 
 .content {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 280px 360px 1fr;
   gap: 16px;
   padding: 16px 24px;
   flex: 1;
+}
+
+.content.single {
+  grid-template-columns: 1fr;
 }
 
 .panel {
