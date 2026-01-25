@@ -10,9 +10,9 @@ const { emitUiEvent, onUiEvent } = require("./events/bus");
 const { twilioEvent, vadEvent, asrEvent, dtmfEvent, ivrEvent, agentMessageEvent } = require("./events/normalize");
 const { buildTwiml, buildOutboundConferenceTwiml, buildWebJoinConferenceTwiml, buildDtmfTwiml } = require("./twilio/twiml");
 const { createTwilioClient, startCall, hangupCall, sendDtmf } = require("./twilio/callControl");
-const { 
-  createSession, 
-  getSession, 
+const {
+  createSession,
+  getSession,
   getSessionByCallSid,
   getSessionBySessionId,
   detachStreamSid,
@@ -53,11 +53,11 @@ const DTMF_MAX_LEN = 16;
 const DTMF_PATTERN = /^[0-9*#w]+$/i;
 const audioAiClient = config.usePythonVad
   ? createAudioAiClient({
-      protoPath:
-        config.audioaiProtoPath ||
-        path.join(__dirname, "../../../packages/proto/audioai.proto"),
-      address: config.aiAudioGrpcUrl
-    })
+    protoPath:
+      config.audioaiProtoPath ||
+      path.join(__dirname, "../../../packages/proto/audioai.proto"),
+    address: config.aiAudioGrpcUrl
+  })
   : null;
 
 // if (config.usePythonVad) {
@@ -69,11 +69,11 @@ const audioAiClient = config.usePythonVad
 // Initialize Agent gRPC server
 if (config.agentGrpcPort) {
   try {
-    const agentProtoPath = config.agentProtoPath || 
+    const agentProtoPath = config.agentProtoPath ||
       path.join(__dirname, "../../../packages/proto/agent.proto");
-    
+
     agentServer.startAgentServer(
-      config.agentGrpcPort, 
+      config.agentGrpcPort,
       agentProtoPath,
       (suggestionData) => {
         // Handle agent suggestions (acts as commands)
@@ -112,6 +112,14 @@ if (config.agentGrpcPort) {
           }
 
           if (dtmfDigits) {
+            // New: emit UI event for DTMF (kind="dtmf")
+            emitUiEvent(agentMessageEvent({
+              ts: Date.now(),
+              sessionId,
+              text: `Sent DTMF: ${dtmfDigits}`,
+              kind: "dtmf"
+            }));
+
             const resolvedSessionId = resolveAgentSessionId(sessionId);
             if (!resolvedSessionId) {
               console.warn("[media-service] Agent DTMF ignored: no active session", { sessionId, lastActiveSessionId });
@@ -232,7 +240,7 @@ function canSendDtmf(session) {
 
 async function sendDtmfWithPolicy(session, digits, source) {
   console.log(`[media-service] sendDtmfWithPolicy: digits=${digits}, source=${source}, callSid=${session?.callSid}, phase=${session?.phase}`);
-  
+
   if (!session?.callSid) {
     const reason = "missing_call_sid";
     console.log(`[media-service] sendDtmfWithPolicy blocked: ${reason}`);
@@ -255,20 +263,20 @@ async function sendDtmfWithPolicy(session, digits, source) {
 
   try {
     console.log(`[media-service] sendDtmfWithPolicy calling Twilio...`);
-    
+
     // Build DTMF URL - Twilio will fetch TwiML from this URL
     // The TwiML plays DTMF, restarts media stream, and rejoins conference
     const dtmfUrl = session.sessionId && session.confName
       ? `${config.publicBaseUrl}/twiml/dtmf?sessionId=${session.sessionId}&confName=${encodeURIComponent(session.confName)}&digits=${encodeURIComponent(digits)}`
       : null;
-    
+
     if (!dtmfUrl) {
       console.warn(`[media-service] sendDtmfWithPolicy: No DTMF URL available (sessionId=${session.sessionId}, confName=${session.confName})`);
     }
-    
-    await sendDtmf({ 
-      client: twilioClient, 
-      callSid: session.callSid, 
+
+    await sendDtmf({
+      client: twilioClient,
+      callSid: session.callSid,
       digits,
       dtmfUrl
     });
@@ -315,18 +323,18 @@ app.post("/twiml", (req, res) => {
 app.post("/twiml/outbound", (req, res) => {
   const { sessionId, confName } = req.query;
   console.log("[media-service] Outbound TwiML requested", { sessionId, confName });
-  
+
   if (!sessionId || !confName) {
     return res.status(400).send("Missing sessionId or confName");
   }
-  
+
   const xml = buildOutboundConferenceTwiml({
     publicBaseUrl: config.publicBaseUrl,
     mediaWsPath: config.mediaWsPath,
     sessionId,
     confName
   });
-  
+
   res.type("text/xml").send(xml);
 });
 
@@ -334,33 +342,33 @@ app.post("/twiml/webJoin", (req, res) => {
   // Twilio sends parameters in the body as form-urlencoded
   console.log("[media-service] Web join TwiML request body:", req.body);
   console.log("[media-service] Web join TwiML request query:", req.query);
-  
+
   // sessionId can come from body (Twilio) or query (testing)
   const sessionId = req.body.sessionId || req.query.sessionId;
   console.log("[media-service] Web join TwiML requested", { sessionId });
-  
+
   if (!sessionId) {
     console.warn("[media-service] Missing sessionId in webJoin request");
     return res.status(400).send("Missing sessionId");
   }
-  
+
   const session = getSessionBySessionId(sessionId);
   if (!session) {
     console.warn("[media-service] Session not found:", sessionId);
     return res.status(404).send("Session not found");
   }
-  
+
   console.log("[media-service] Found session for webJoin:", {
     sessionId: session.sessionId,
     confName: session.confName,
     state: session.state
   });
-  
+
   const xml = buildWebJoinConferenceTwiml({
     confName: session.confName,
     publicBaseUrl: config.publicBaseUrl
   });
-  
+
   console.log("[media-service] Returning webJoin TwiML:", xml);
   res.type("text/xml").send(xml);
 });
@@ -370,12 +378,12 @@ app.post("/twiml/webJoin", (req, res) => {
 app.post("/twiml/dtmf", (req, res) => {
   const { sessionId, confName, digits } = req.query;
   console.log("[media-service] DTMF TwiML requested", { sessionId, confName, digits });
-  
+
   if (!sessionId || !confName || !digits) {
     console.warn("[media-service] Missing parameters in dtmf request");
     return res.status(400).send("Missing sessionId, confName, or digits");
   }
-  
+
   const xml = buildDtmfTwiml({
     publicBaseUrl: config.publicBaseUrl,
     mediaWsPath: config.mediaWsPath,
@@ -383,7 +391,7 @@ app.post("/twiml/dtmf", (req, res) => {
     confName,
     digits
   });
-  
+
   console.log("[media-service] Returning DTMF TwiML:", xml);
   res.type("text/xml").send(xml);
 });
@@ -391,36 +399,36 @@ app.post("/twiml/dtmf", (req, res) => {
 app.post("/token", (req, res) => {
   try {
     const { identity, sessionId } = req.body;
-    
+
     if (!identity) {
       return res.status(400).json({ error: "Missing identity" });
     }
-    
+
     // Check if API credentials are configured
     if (!config.twilioApiKey || !config.twilioApiSecret || !config.twilioTwimlAppSid) {
       console.warn("[media-service] Twilio API credentials not configured for token generation");
-      return res.status(501).json({ 
-        error: "Token generation not configured. Please set TWILIO_API_KEY, TWILIO_API_SECRET, and TWILIO_TWIML_APP_SID" 
+      return res.status(501).json({
+        error: "Token generation not configured. Please set TWILIO_API_KEY, TWILIO_API_SECRET, and TWILIO_TWIML_APP_SID"
       });
     }
-    
+
     const token = new AccessToken(
       config.twilioAccountSid,
       config.twilioApiKey,
       config.twilioApiSecret,
       { identity }
     );
-    
+
     const voiceGrant = new VoiceGrant({
       outgoingApplicationSid: config.twilioTwimlAppSid,
       incomingAllow: false
     });
-    
+
     token.addGrant(voiceGrant);
-    
+
     console.log("[media-service] Token generated for", identity);
-    
-    res.json({ 
+
+    res.json({
       token: token.toJwt(),
       identity,
       sessionId
@@ -435,41 +443,41 @@ app.post("/call/start", async (req, res) => {
   try {
     const sessionId = generateSessionId();
     const confName = generateConfName(sessionId);
-    
+
     console.log("[media-service] Starting call", {
       to: config.fixedToNumber,
       from: config.twilioFromNumber,
       sessionId,
       confName
     });
-    
+
     const call = await startCall({
       client: twilioClient,
       to: config.fixedToNumber,
       from: config.twilioFromNumber,
       twimlUrl: `${config.publicBaseUrl}/twiml/outbound?sessionId=${sessionId}&confName=${encodeURIComponent(confName)}`
     });
-    
+
     console.log("[media-service] Call started", call.sid);
     activeCallSid = call.sid;
-    
+
     // Create session preemptively
-    const session = createSession({ 
-      sessionId, 
-      confName, 
+    const session = createSession({
+      sessionId,
+      confName,
       callSid: call.sid,
-      streamSid: null 
+      streamSid: null
     });
     lastActiveSessionId = session.sessionId;
     ivrController.initSession(session);
-    
+
     emitTwilio({
       callSid: call.sid,
       event: "twilio.call.start",
       data: { to: config.fixedToNumber, sessionId, confName },
       ts: 0
     });
-    
+
     res.json({ ok: true, callSid: call.sid, sessionId, confName });
   } catch (error) {
     emitUiEvent({
@@ -515,7 +523,7 @@ app.post("/call/dtmf", async (req, res) => {
   try {
     const { sessionId, callSid, digits } = req.body || {};
     console.log(`[media-service] /call/dtmf request: sessionId=${sessionId}, callSid=${callSid}, digits=${digits}`);
-    
+
     const validationError = validateDigits(digits);
     if (validationError) {
       console.log(`[media-service] /call/dtmf validation failed: ${validationError}`);
@@ -530,7 +538,7 @@ app.post("/call/dtmf", async (req, res) => {
       console.log(`[media-service] /call/dtmf session not found: sessionId=${sessionId}, callSid=${callSid}`);
       return res.status(404).json({ ok: false, error: "session_not_found" });
     }
-    
+
     console.log(`[media-service] /call/dtmf found session: phase=${session.phase}, callSid=${session.callSid}, state=${session.state}`);
 
     await sendDtmfWithPolicy(session, digits, "manual");
@@ -589,7 +597,7 @@ app.post("/status/conference", (req, res) => {
   } = req.body;
   console.log(`[status/conference] Event=${StatusCallbackEvent}, Conference=${FriendlyName}, CallSid=${CallSid}`);
   console.log(`[status/conference] Full body:`, JSON.stringify(req.body, null, 2));
-  
+
   const match = FriendlyName?.match(/^conf_(sess_.+)$/);
   const sessionIdFromName = match ? match[1] : null;
   const sessionFromCallSid = CallSid ? getSessionByCallSid(CallSid) : null;
@@ -650,7 +658,7 @@ app.post("/status/conference", (req, res) => {
       }
     }
   }
-  
+
   res.sendStatus(200);
 });
 
@@ -696,17 +704,17 @@ wss.on("connection", (socket) => {
       const callSid = message.start.callSid;
       const customParams = message.start.customParameters || {};
       const sessionId = customParams.session_id;
-      
+
       streamSockets.set(streamSid, socket);
       socket._streamSid = streamSid;
-      
+
       console.log("[media-service] Media stream parameters", {
         streamSid,
         callSid,
         sessionId,
         customParams
       });
-      
+
       // Try to get existing session or create new one
       let session = sessionId ? getSessionBySessionId(sessionId) : null;
       if (session) {
@@ -718,7 +726,7 @@ wss.on("connection", (socket) => {
           oldStreamSid: session.streamSid,
           newStreamSid: streamSid
         });
-        
+
         // Update the session and re-index by streamSid
         session = updateSessionBySessionId(sessionId, {
           streamSid,
@@ -730,9 +738,9 @@ wss.on("connection", (socket) => {
           session._conferenceEndTimeout = null;
         }
         ivrController.initSession(session);
-        
-        console.log("[media-service] ✓ Updated existing session", { 
-          sessionId, 
+
+        console.log("[media-service] ✓ Updated existing session", {
+          sessionId,
           streamSid,
           confName: session.confName,
           state: session.state
@@ -758,7 +766,7 @@ wss.on("connection", (socket) => {
         console.log(`[media-service] Creating Deepgram connection for session ${sessionId || streamSid}`);
         session.asrConnecting = true;
         session.asrDisabled = false;
-        
+
         deepgramClient.createConnection(
           sessionId || streamSid,
           config.deepgramApiKey,
@@ -777,7 +785,7 @@ wss.on("connection", (socket) => {
                 isFinal: false,
                 track: "remote"
               }));
-              
+
               // Push to Agent if subscribed
               agentServer.pushEvent(eventData.sessionId, {
                 type: "asr.remote.partial",
@@ -800,7 +808,7 @@ wss.on("connection", (socket) => {
                 isFinal: true,
                 track: "remote"
               }));
-              
+
               // Push to Agent if subscribed
               agentServer.pushEvent(eventData.sessionId, {
                 type: "asr.remote.final",
@@ -829,7 +837,7 @@ wss.on("connection", (socket) => {
           console.error(`[media-service] Failed to create Deepgram connection:`, error);
         });
       }
-      
+
       if (config.usePythonVad && audioAiClient) {
         // Initialize reconnect state for this session
         if (!session.grpcReconnectState) {
@@ -841,12 +849,12 @@ wss.on("connection", (socket) => {
             isReconnecting: false
           };
         }
-        
+
         // Helper function to create gRPC stream
         const createGrpcStream = () => {
           console.log(`[media-service] Creating gRPC stream for session ${sessionId || streamSid}`);
           const grpcStream = audioAiClient.Stream();
-          
+
           grpcStream.on("data", (event) => {
             // Reset retry count on successful data reception
             if (session.grpcReconnectState) {
@@ -854,25 +862,25 @@ wss.on("connection", (socket) => {
             }
             const action = mapVadAction(event.event);
             if (!action) return;
-            
+
             // Extract music_prob (gRPC uses snake_case due to keepCase: true)
             // Check both snake_case and camelCase for compatibility
-            const musicProb = (event.music_prob !== undefined && event.music_prob !== null) 
-              ? event.music_prob 
+            const musicProb = (event.music_prob !== undefined && event.music_prob !== null)
+              ? event.music_prob
               : (event.musicProb !== undefined && event.musicProb !== null)
                 ? event.musicProb
                 : 0.0;
-            
+
             // Debug: log all event fields for first few events and when music is detected
             if (!session._vadEventCount) {
               session._vadEventCount = 0;
             }
             session._vadEventCount++;
-            
+
             // if (musicProb > 0.1 || session._vadEventCount <= 10) {
             //   console.log(`[media-service] VAD event #${session._vadEventCount}: action=${action}, prob=${event.prob}, music_prob=${musicProb}, has_music_prob=${event.music_prob !== undefined}, has_musicProb=${event.musicProb !== undefined}, all_fields=${Object.keys(event).join(',')}, event_obj=${JSON.stringify(event)}`);
             // }
-            
+
             emitVad({
               session,
               action,
@@ -881,14 +889,14 @@ wss.on("connection", (socket) => {
               musicProb: musicProb
             });
           });
-          
+
           grpcStream.on("error", (error) => {
             console.error(`[media-service] gRPC stream error ${error.code || ''} ${error.message}`);
             // Mark stream as invalid
             if (session.grpcStream === grpcStream) {
               session.grpcStream = null;
             }
-            
+
             // Only attempt reconnect if we haven't exceeded max retries
             if (session.grpcReconnectState && session.grpcReconnectState.retryCount < session.grpcReconnectState.maxRetries) {
               attemptReconnect();
@@ -896,14 +904,14 @@ wss.on("connection", (socket) => {
               console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
             }
           });
-          
+
           grpcStream.on("end", () => {
             console.log("[media-service] gRPC stream ended");
             // Mark stream as invalid
             if (session.grpcStream === grpcStream) {
               session.grpcStream = null;
             }
-            
+
             // Only attempt reconnect if we haven't exceeded max retries
             if (session.grpcReconnectState && session.grpcReconnectState.retryCount < session.grpcReconnectState.maxRetries) {
               attemptReconnect();
@@ -911,16 +919,16 @@ wss.on("connection", (socket) => {
               console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
             }
           });
-          
+
           return grpcStream;
         };
-        
+
         // Reconnect helper with exponential backoff
         const attemptReconnect = () => {
           if (!session || !session.grpcReconnectState) return;
-          
+
           const state = session.grpcReconnectState;
-          
+
           // Check if we've exceeded max retries
           if (state.retryCount >= state.maxRetries) {
             if (!state.hasLoggedMaxRetries) {
@@ -929,23 +937,23 @@ wss.on("connection", (socket) => {
             }
             return;
           }
-          
+
           // Prevent multiple simultaneous reconnection attempts
           if (state.isReconnecting) {
             return;
           }
-          
+
           state.isReconnecting = true;
           state.retryCount++;
-          
+
           // Calculate exponential backoff delay
           const delay = Math.min(
             state.baseDelay * Math.pow(2, state.retryCount - 1),
             state.maxDelay
           );
-          
+
           console.log(`[media-service] Attempting to reconnect gRPC stream for session ${sessionId || streamSid} (attempt ${state.retryCount}/${state.maxRetries}, delay ${delay}ms)`);
-          
+
           setTimeout(() => {
             state.isReconnecting = false;
             if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
@@ -958,7 +966,7 @@ wss.on("connection", (socket) => {
             }
           }, delay);
         };
-        
+
         // Close existing gRPC stream before creating new one
         if (session.grpcStream) {
           console.log(`[media-service] Closing existing gRPC stream for session ${sessionId || streamSid}`);
@@ -969,11 +977,11 @@ wss.on("connection", (socket) => {
           }
           session.grpcStream = null;
         }
-        
+
         // Reset reconnect state for fresh connection
         session.grpcReconnectState.retryCount = 0;
         session.grpcReconnectState.hasLoggedMaxRetries = false;
-        
+
         session.grpcStream = createGrpcStream();
         console.log(`[media-service] gRPC stream created for ${sessionId || streamSid}`);
       } else {
@@ -1010,7 +1018,7 @@ wss.on("connection", (socket) => {
         return;
       }
       session.lastAudioAt = Date.now();
-      
+
       // Ensure gRPC stream exists, recreate if needed
       if (config.usePythonVad && audioAiClient) {
         if (!session.grpcStream) {
@@ -1024,9 +1032,9 @@ wss.on("connection", (socket) => {
               isReconnecting: false
             };
           }
-          
+
           const state = session.grpcReconnectState;
-          
+
           // Check if we've exceeded max retries - if so, stop trying completely
           if (state.retryCount >= state.maxRetries) {
             // Only log once per session
@@ -1036,18 +1044,18 @@ wss.on("connection", (socket) => {
             }
             return; // Don't try to create stream if max retries exceeded
           }
-          
+
           // Don't recreate if already reconnecting
           if (state.isReconnecting) {
             return;
           }
-          
+
           console.log(`[media-service] gRPC stream missing, recreating for session ${streamSid}`);
-          
+
           // Recreate gRPC stream helper function
           const createGrpcStream = () => {
             const grpcStream = audioAiClient.Stream();
-            
+
             grpcStream.on("data", (event) => {
               // Reset retry count on successful data reception
               if (session.grpcReconnectState) {
@@ -1063,7 +1071,7 @@ wss.on("connection", (socket) => {
                 track: event.track || "inbound"
               });
             });
-            
+
             grpcStream.on("error", (error) => {
               console.error(`[media-service] gRPC stream error ${error.code || ''} ${error.message}`);
               if (session.grpcStream === grpcStream) {
@@ -1076,7 +1084,7 @@ wss.on("connection", (socket) => {
                 console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
               }
             });
-            
+
             grpcStream.on("end", () => {
               console.log("[media-service] gRPC stream ended");
               if (session.grpcStream === grpcStream) {
@@ -1089,16 +1097,16 @@ wss.on("connection", (socket) => {
                 console.warn(`[media-service] Not attempting reconnect - max retries (${session.grpcReconnectState?.maxRetries || 'unknown'}) already reached`);
               }
             });
-            
+
             return grpcStream;
           };
-          
+
           // Reconnect helper with exponential backoff
           const attemptReconnect = () => {
             if (!session || !session.grpcReconnectState) return;
-            
+
             const reconnectState = session.grpcReconnectState;
-            
+
             if (reconnectState.retryCount >= reconnectState.maxRetries) {
               if (!reconnectState.hasLoggedMaxRetries) {
                 console.warn(`[media-service] Max reconnection attempts (${reconnectState.maxRetries}) reached for session ${streamSid}. Stopping reconnection attempts.`);
@@ -1106,21 +1114,21 @@ wss.on("connection", (socket) => {
               }
               return;
             }
-            
+
             if (reconnectState.isReconnecting) {
               return;
             }
-            
+
             reconnectState.isReconnecting = true;
             reconnectState.retryCount++;
-            
+
             const delay = Math.min(
               reconnectState.baseDelay * Math.pow(2, reconnectState.retryCount - 1),
               reconnectState.maxDelay
             );
-            
+
             console.log(`[media-service] Scheduling reconnect for session ${streamSid} (attempt ${reconnectState.retryCount}/${reconnectState.maxRetries}, delay ${delay}ms)`);
-            
+
             setTimeout(() => {
               reconnectState.isReconnecting = false;
               if (session && !session.grpcStream && config.usePythonVad && audioAiClient) {
@@ -1132,30 +1140,30 @@ wss.on("connection", (socket) => {
               }
             }, delay);
           };
-          
+
           session.grpcStream = createGrpcStream();
         }
-        
+
         if (session.grpcStream) {
           session.seq = (session.seq || 0) + 1;
           const payload = Buffer.from(message.media.payload, "base64");
-          
+
           // Get track from Twilio message (if available)
           // Twilio Media Streams: "inbound" = remote speaker (PSTN), "outbound" = local mic
           // For outbound PSTN call: we want "inbound" (what PSTN caller is saying)
           const twilioTrack = message.media.track || "inbound";
-          
+
           // Track statistics (minimal logging)
           if (!session.trackStats) {
             session.trackStats = { inbound: 0, outbound: 0, unknown: 0 };
           }
           session.trackStats[twilioTrack] = (session.trackStats[twilioTrack] || 0) + 1;
-          
+
           // Log track distribution only every 1000 chunks (reduced frequency)
           // if (session.seq % 1000 === 0) {
           //   console.log(`[media-service] Track stats: ${JSON.stringify(session.trackStats)}`);
           // }
-          
+
           // Only process "inbound" track (remote speaker) for VAD
           // "outbound" track would be our own mic, which we don't need to analyze
           if (twilioTrack !== "inbound") {
@@ -1165,7 +1173,7 @@ wss.on("connection", (socket) => {
             // }
             return;
           }
-          
+
           const audioChunk = {
             session_id: streamSid,
             seq: session.seq,
@@ -1174,7 +1182,7 @@ wss.on("connection", (socket) => {
             timestamp_ms: Date.now() - session.callStartAt,
             track: "inbound"  // Remote speaker (PSTN caller)
           };
-          
+
           try {
             session.grpcStream.write(audioChunk);
           } catch (error) {
@@ -1189,7 +1197,7 @@ wss.on("connection", (socket) => {
         }
         session.vadMock?.onAudioFrame();
       }
-      
+
       // Send audio to Deepgram ASR if enabled
       if (config.asrEnabled && config.deepgramApiKey) {
         if (!session.asrDisabled) {
@@ -1214,7 +1222,7 @@ wss.on("connection", (socket) => {
       console.log("[media-service] Media stream stopped", message.streamSid);
       const streamSid = message.streamSid;
       const session = getSession(streamSid);
-      
+
       // Only close Deepgram connection if this is still the active stream for the session
       // This prevents race conditions where a new stream starts before the old one stops
       if (config.asrEnabled && config.deepgramApiKey && session) {
@@ -1226,7 +1234,7 @@ wss.on("connection", (socket) => {
           console.log(`[media-service] Skipping Deepgram close for old stream ${streamSid} (current: ${session.streamSid})`);
         }
       }
-      
+
       // Only close gRPC stream if this is still the active stream for the session
       // This prevents race conditions where a new stream starts before the old one stops
       if (session) {

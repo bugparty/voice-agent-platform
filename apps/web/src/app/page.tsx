@@ -32,6 +32,7 @@ type MessageItem = {
   timestamp: number;
   text: string;
   source: "caller" | "agent";
+  kind?: string; // Added kind
   confidence?: number;
 };
 
@@ -61,7 +62,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [partialTranscript, setPartialTranscript] = useState<string>("");
-  
+
   const baseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_MEDIA_SERVICE_URL || "http://localhost:4001",
     []
@@ -107,7 +108,7 @@ export default function Page() {
         const text = event.payload?.text as string;
         const confidence = Number(event.payload?.confidence ?? 0);
         const isFinal = Boolean(event.payload?.isFinal);
-        
+
         if (isFinal) {
           // Add final transcript to messages
           setMessages((prev) => [{
@@ -115,7 +116,7 @@ export default function Page() {
             timestamp: event.ts,
             text,
             confidence,
-            source: "caller",
+            source: "caller" as const,
           }, ...prev].slice(0, 50)); // Keep last 50 messages
           setPartialTranscript(""); // Clear partial
         } else {
@@ -125,12 +126,14 @@ export default function Page() {
       }
       if (event.category === "AGENT") {
         const text = event.payload?.text as string;
+        const kind = event.payload?.kind as string | undefined;
         if (text) {
           setMessages((prev) => [{
             id: event.id,
             timestamp: event.ts,
             text,
-            source: "agent",
+            source: "agent" as const,
+            kind,
           }, ...prev].slice(0, 50));
         }
       }
@@ -174,7 +177,7 @@ export default function Page() {
         confName: callState.confName,
         callStatus: callState.callStatus,
       });
-      
+
       if (!callState.sessionId) {
         console.error("[Web UI] No active call session");
         setError("No active call session");
@@ -185,7 +188,7 @@ export default function Page() {
       console.log("[Web UI] Step 2: Requesting microphone permission...");
       const permission = await requestMicPermission();
       console.log("[Web UI] Microphone permission result:", permission);
-      
+
       setUserState((prev) => ({ ...prev, micPermission: permission }));
 
       if (permission !== "granted") {
@@ -205,7 +208,7 @@ export default function Page() {
         sessionId: callState.sessionId,
         endpoint: `${baseUrl}/token`,
       });
-      
+
       const tokenRes = await fetch(`${baseUrl}/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -221,7 +224,7 @@ export default function Page() {
         hasError: !!tokenData.error,
         identity: tokenData.identity,
       });
-      
+
       if (tokenData.error) {
         console.error("[Web UI] Token error:", tokenData.error);
         setError(tokenData.error);
@@ -250,10 +253,10 @@ export default function Page() {
         sessionId: callState.sessionId,
         audioEnabled: permission === "granted",
       });
-      
+
       // Pass audio enabled flag based on permission
       await joinConference(callState.sessionId, permission === "granted");
-      
+
       console.log("[Web UI] ===== Join Conference Flow Success =====");
     } catch (err) {
       console.error("[Web UI] Join conference failed:", err);
@@ -350,8 +353,8 @@ export default function Page() {
             <button onClick={handleStartCall} disabled={callState.callStatus !== "DISCONNECTED"}>
               Call
             </button>
-            <button 
-              className="secondary" 
+            <button
+              className="secondary"
               onClick={handleHangup}
               disabled={callState.callStatus === "DISCONNECTED"}
             >
@@ -362,8 +365,8 @@ export default function Page() {
           <h3 style={{ marginTop: "20px" }}>User Controls</h3>
           <p>Join the conference to speak with the callee.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button 
-              onClick={handleJoinConference} 
+            <button
+              onClick={handleJoinConference}
               disabled={!canJoin}
               title={!canJoin ? `Cannot join: callStatus=${callState.callStatus}, deviceStatus=${userState.deviceStatus}` : ""}
             >
@@ -376,7 +379,7 @@ export default function Page() {
               {userState.isMuted ? "Unmute" : "Mute"}
             </button>
           </div>
-          
+
           {/* Debug info */}
           <div style={{ marginTop: "12px", fontSize: "11px", color: "#999", fontFamily: "monospace" }}>
             <div>canJoin: {canJoin ? "✓ true" : "✗ false"}</div>
@@ -394,8 +397,8 @@ export default function Page() {
         <div className="panel">
           <h3>Menu Selection Keypad</h3>
           <p>Press digits to select menu options during the call.</p>
-          <Keypad 
-            onKeyPress={handleKeypadPress} 
+          <Keypad
+            onKeyPress={handleKeypadPress}
             disabled={callState.callStatus !== "IN_CALL"}
           />
         </div>
@@ -408,9 +411,9 @@ export default function Page() {
           ) : (
             <div style={{ marginBottom: "12px" }}>
               {partialTranscript && (
-                <div style={{ 
-                  padding: "12px 16px", 
-                  background: "rgba(14, 165, 233, 0.15)", 
+                <div style={{
+                  padding: "12px 16px",
+                  background: "rgba(14, 165, 233, 0.15)",
                   borderLeft: "3px solid #0ea5e9",
                   borderRadius: "12px",
                   marginBottom: "8px",
@@ -423,8 +426,8 @@ export default function Page() {
                   {partialTranscript}
                 </div>
               )}
-              <div style={{ 
-                maxHeight: "600px", 
+              <div style={{
+                maxHeight: "600px",
                 overflowY: "auto",
                 display: "flex",
                 flexDirection: "column",
@@ -437,35 +440,57 @@ export default function Page() {
                 )}
                 {messages.map((message) => {
                   const isAgent = message.source === "agent";
+                  const isDtmf = message.kind === "dtmf";
+
+                  // Default styles (user/caller)
+                  let bg = "rgba(30, 41, 59, 0.8)";
+                  let borderLeft = "3px solid #0ea5e9";
+                  let color = "#e2e8f0";
+                  let boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)";
+
+                  if (isAgent) {
+                    if (isDtmf) {
+                      // Purple for DTMF
+                      bg = "rgba(99, 102, 241, 0.2)";
+                      borderLeft = "3px solid #6366f1";
+                      color = "#e0e7ff";
+                      boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 12px rgba(99, 102, 241, 0.2)";
+                    } else {
+                      // Green for standard Agent speech
+                      bg = "rgba(16, 185, 129, 0.18)";
+                      borderLeft = "3px solid #10b981";
+                      color = "#d1fae5";
+                      boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 12px rgba(16, 185, 129, 0.15)";
+                    }
+                  }
+
                   return (
-                  <div 
-                    key={message.id}
-                    style={{ 
-                      padding: "12px 16px", 
-                      background: isAgent ? "rgba(16, 185, 129, 0.18)" : "rgba(30, 41, 59, 0.8)",
-                      border: "1px solid rgba(148, 163, 184, 0.3)",
-                      borderLeft: isAgent ? "3px solid #10b981" : "3px solid #0ea5e9",
-                      borderRadius: "12px",
-                      fontSize: "14px",
-                      color: isAgent ? "#d1fae5" : "#e2e8f0",
-                      backdropFilter: "blur(8px)",
-                      boxShadow: isAgent 
-                        ? "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 12px rgba(16, 185, 129, 0.15)" 
-                        : "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)"
-                    }}
-                  >
-                    <div style={{ marginBottom: "4px" }}>
-                      {message.text}
+                    <div
+                      key={message.id}
+                      style={{
+                        padding: "12px 16px",
+                        background: bg,
+                        border: "1px solid rgba(148, 163, 184, 0.3)",
+                        borderLeft,
+                        borderRadius: "12px",
+                        fontSize: "14px",
+                        color,
+                        backdropFilter: "blur(8px)",
+                        boxShadow
+                      }}
+                    >
+                      <div style={{ marginBottom: "4px" }}>
+                        {message.text}
+                      </div>
+                      <div style={{ fontSize: "11px", color: isAgent ? (isDtmf ? "#818cf8" : "#6ee7b7") : "#94a3b8" }}>
+                        {isAgent ? (isDtmf ? "Agent Input" : "Agent") : "Caller"}
+                        {message.confidence !== undefined && (
+                          <> · Confidence: {(message.confidence * 100).toFixed(0)}%</>
+                        )}
+                        {" · "}
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
                     </div>
-                    <div style={{ fontSize: "11px", color: isAgent ? "#6ee7b7" : "#94a3b8" }}>
-                      {isAgent ? "Agent" : "Caller"}
-                      {message.confidence !== undefined && (
-                        <> · Confidence: {(message.confidence * 100).toFixed(0)}%</>
-                      )}
-                      {" · "}
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </div>
-                  </div>
                   );
                 })}
               </div>
