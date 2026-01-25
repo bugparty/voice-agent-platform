@@ -8,6 +8,9 @@ const sessionStreams = new Map();
 // 会话 → 订阅过滤器映射
 const sessionFilters = new Map();
 
+// Special key for "all sessions" subscriptions
+const ALL_SESSIONS_KEY = "__all__";
+
 let agentProto = null;
 let server = null;
 
@@ -44,10 +47,17 @@ function subscribeHandler(call) {
     try {
       if (agentMessage.subscribe) {
         // 处理订阅请求
-        sessionId = agentMessage.subscribe.session_id || agentMessage.session_id;
+        const requestedSessionId = agentMessage.subscribe.session_id || agentMessage.session_id;
         eventTypes = agentMessage.subscribe.event_types || [];
-        
-        console.log(`[AgentServer] Agent subscribed to session ${sessionId}, filters: ${eventTypes.join(", ")}`);
+        const wantsAllSessions =
+          !requestedSessionId ||
+          requestedSessionId === "*" ||
+          requestedSessionId === "all";
+
+        sessionId = wantsAllSessions ? ALL_SESSIONS_KEY : requestedSessionId;
+
+        const sessionLabel = wantsAllSessions ? "ALL_SESSIONS" : sessionId;
+        console.log(`[AgentServer] Agent subscribed to session ${sessionLabel}, filters: ${eventTypes.join(", ")}`);
         
         // 保存流和过滤器
         sessionStreams.set(sessionId, call);
@@ -55,12 +65,12 @@ function subscribeHandler(call) {
         
         // 发送确认消息 (可选)
         call.write({
-          session_id: sessionId,
+          session_id: requestedSessionId || "*",
           timestamp_ms: Date.now(),
           event_type: "agent.subscription.confirmed",
           call: {
             status: "subscribed",
-            call_sid: sessionId,
+            call_sid: requestedSessionId || "*",
           },
         });
       } else if (agentMessage.suggestion) {
@@ -120,28 +130,34 @@ function subscribeHandler(call) {
  * @param {object} event - 事件对象
  */
 function pushEvent(sessionId, event) {
-  const stream = sessionStreams.get(sessionId);
-  if (!stream) {
-    return false;
-  }
-
-  const filters = sessionFilters.get(sessionId);
   const eventType = event.type || event.event_type || "";
-  
-  // 检查事件是否匹配过滤器
-  if (!matchesFilter(eventType, filters)) {
-    return false;
+  const targetKeys = sessionId === ALL_SESSIONS_KEY
+    ? [ALL_SESSIONS_KEY]
+    : [sessionId, ALL_SESSIONS_KEY];
+
+  let delivered = false;
+
+  for (const key of targetKeys) {
+    const stream = sessionStreams.get(key);
+    if (!stream) continue;
+
+    const filters = sessionFilters.get(key);
+    // 检查事件是否匹配过滤器
+    if (!matchesFilter(eventType, filters)) {
+      continue;
+    }
+
+    try {
+      // 转换事件格式为 Proto 格式 (始终使用真实 sessionId)
+      const sessionEvent = convertToSessionEvent(sessionId, event);
+      stream.write(sessionEvent);
+      delivered = true;
+    } catch (error) {
+      console.error(`[AgentServer] Error pushing event to agent for session ${key}:`, error);
+    }
   }
 
-  try {
-    // 转换事件格式为 Proto 格式
-    const sessionEvent = convertToSessionEvent(sessionId, event);
-    stream.write(sessionEvent);
-    return true;
-  } catch (error) {
-    console.error(`[AgentServer] Error pushing event to agent for session ${sessionId}:`, error);
-    return false;
-  }
+  return delivered;
 }
 
 /**

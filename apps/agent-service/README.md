@@ -39,6 +39,7 @@ python -m agent_service.main
 Environment variables:
 
 - `MEDIA_SERVICE_GRPC_URL`: Address of media-service gRPC server (default: localhost:50052)
+- `SESSION_ID`: Session to subscribe to (use `*` for all sessions)
 - `LOG_LEVEL`: Logging level (default: INFO)
 
 ## Development
