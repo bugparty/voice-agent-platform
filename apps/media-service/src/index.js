@@ -959,6 +959,21 @@ wss.on("connection", (socket) => {
           }, delay);
         };
         
+        // Close existing gRPC stream before creating new one
+        if (session.grpcStream) {
+          console.log(`[media-service] Closing existing gRPC stream for session ${sessionId || streamSid}`);
+          try {
+            session.grpcStream.end();
+          } catch (e) {
+            console.warn(`[media-service] Error closing old gRPC stream: ${e.message}`);
+          }
+          session.grpcStream = null;
+        }
+        
+        // Reset reconnect state for fresh connection
+        session.grpcReconnectState.retryCount = 0;
+        session.grpcReconnectState.hasLoggedMaxRetries = false;
+        
         session.grpcStream = createGrpcStream();
         console.log(`[media-service] gRPC stream created for ${sessionId || streamSid}`);
       } else {
@@ -1212,12 +1227,21 @@ wss.on("connection", (socket) => {
         }
       }
       
-      if (session?.grpcStream) {
-        session.grpcStream.end();
-        session.grpcStream = null;
-      } else if (session?.vadMock) {
-        session.vadMock.stop();
-        session.vadMock = null;
+      // Only close gRPC stream if this is still the active stream for the session
+      // This prevents race conditions where a new stream starts before the old one stops
+      if (session) {
+        const isCurrentStream = session.streamSid === streamSid || session.streamSid === null;
+        if (isCurrentStream) {
+          if (session.grpcStream) {
+            session.grpcStream.end();
+            session.grpcStream = null;
+          } else if (session.vadMock) {
+            session.vadMock.stop();
+            session.vadMock = null;
+          }
+        } else {
+          console.log(`[media-service] Skipping gRPC/VAD cleanup for old stream ${streamSid} (current: ${session.streamSid})`);
+        }
       }
       emitTwilio({
         callSid: session?.callSid,
