@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 
 from agent_service.grpc_client import AgentBridgeClient
 from agent_service.event_handler import EventHandler
+from agent_service.llm_client import LLMClient
+from agent_service.ivr_agent import IVRAgent
 
 # Load environment variables
 load_dotenv()
@@ -45,17 +47,58 @@ def main():
     
     # Get configuration from environment
     media_service_url = os.getenv("MEDIA_SERVICE_GRPC_URL", "localhost:50052")
-    session_id = os.getenv("SESSION_ID", "test-session")
-    event_filters = os.getenv("EVENT_FILTERS", "vad.*,asr.*,call.*").split(",")
+    session_id = os.getenv("SESSION_ID", "")  # Empty = subscribe to all sessions
+    if not session_id:
+        session_id = "*"  # Wildcard to match all sessions
+    event_filters = os.getenv("EVENT_FILTERS", "asr.*,call.*").split(",")
+    
+    # LLM configuration
+    llm_api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")
+    llm_base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
+    llm_model = os.getenv("LLM_MODEL", "deepseek-chat")
+    
+    if not llm_api_key:
+        logger.error("No API key found! Set DEEPSEEK_API_KEY or OPENAI_API_KEY")
+        return 1
     
     logger.info(f"Configuration:")
     logger.info(f"  Media Service URL: {media_service_url}")
     logger.info(f"  Session ID: {session_id}")
     logger.info(f"  Event Filters: {event_filters}")
+    logger.info(f"  LLM Model: {llm_model}")
+    logger.info(f"  LLM Base URL: {llm_base_url}")
     
-    # Initialize components
+    # Initialize LLM client
+    try:
+        llm_client = LLMClient(
+            api_key=llm_api_key,
+            base_url=llm_base_url,
+            model=llm_model
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize LLM client: {e}")
+        return 1
+    
+    # Initialize IVR agent
+    ivr_agent = IVRAgent(
+        llm_client=llm_client,
+        goal="Connect to a human representative"
+    )
+    
+    # Initialize gRPC client
     client = AgentBridgeClient(media_service_url)
-    handler = EventHandler()
+    
+    # Define suggestion callback
+    def on_suggestion(session_id: str, decision: dict):
+        """Send agent suggestion back to media-service."""
+        try:
+            client.send_suggestion(session_id, decision)
+            logger.info(f"Sent suggestion to media-service: Press '{decision['digit']}'")
+        except Exception as e:
+            logger.error(f"Failed to send suggestion: {e}")
+    
+    # Initialize event handler
+    handler = EventHandler(ivr_agent=ivr_agent, on_suggestion=on_suggestion)
     
     try:
         # Connect to media-service

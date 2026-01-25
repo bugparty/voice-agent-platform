@@ -156,6 +156,22 @@
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.keypad-button.agent-highlight {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: #34d399 !important;
+  animation: agent-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+@keyframes agent-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.8), 0 0 60px rgba(16, 185, 129, 0.4), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
 .keypad-button.disabled {
   opacity: 0.4;
   cursor: not-allowed;

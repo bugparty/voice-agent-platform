@@ -74,7 +74,7 @@ if (config.agentGrpcPort) {
     agentServer.startAgentServer(
       config.agentGrpcPort, 
       agentProtoPath,
-      (suggestionData) => {
+      async (suggestionData) => {
         // Handle agent suggestions
         const { sessionId, suggestion } = suggestionData;
         console.log(`[media-service] Received agent suggestion for session ${sessionId}:`, {
@@ -83,8 +83,47 @@ if (config.agentGrpcPort) {
           actions: suggestion.actions?.length || 0
         });
         
-        // TODO: Implement suggestion execution logic
-        // For now, just log it
+        // Execute suggestion actions
+        try {
+          const session = sessionStore.getSessionBySessionId(sessionId);
+          if (!session) {
+            console.warn(`[media-service] Cannot execute suggestion: session ${sessionId} not found`);
+            return;
+          }
+          
+          // Process each action in the suggestion
+          for (const action of suggestion.actions || []) {
+            if (action.send_dtmf) {
+              const digits = action.send_dtmf.digits;
+              console.log(`[Agent] Executing action: Send DTMF "${digits}" for session ${sessionId}`);
+              
+              // Emit agent event to UI
+              const agentEventPayload = {
+                ts: Date.now(),
+                sessionId,
+                callSid: session.callSid,
+                action: "dtmf",
+                digit: digits,
+                reasoning: suggestion.plan,
+                confidence: suggestion.confidence,
+                suggestionId: suggestion.suggestion_id
+              };
+              emitToSessionClients(sessionId, agentEventPayload);
+              emitToWebClients({ type: "AGENT", payload: agentEventPayload });
+              
+              // Send DTMF via Twilio
+              await sendDtmfWithPolicy(session, digits, `agent:${suggestion.suggestion_id}`);
+              console.log(`[Agent] Successfully sent DTMF "${digits}" for session ${sessionId}`);
+              
+            } else if (action.say_tts) {
+              console.log(`[Agent] TTS action not yet implemented: "${action.say_tts.text}"`);
+            } else if (action.wait) {
+              console.log(`[Agent] Wait action: ${action.wait.reason}`);
+            }
+          }
+        } catch (error) {
+          console.error(`[media-service] Error executing suggestion for session ${sessionId}:`, error);
+        }
       }
     );
     console.log(`[media-service] Agent gRPC server starting on port ${config.agentGrpcPort}`);

@@ -1,7 +1,7 @@
 """Event handler for processing media-service events."""
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -9,8 +9,16 @@ logger = logging.getLogger(__name__)
 class EventHandler:
     """Handles incoming events from media-service."""
     
-    def __init__(self):
-        """Initialize the event handler."""
+    def __init__(self, ivr_agent=None, on_suggestion: Optional[Callable] = None):
+        """
+        Initialize the event handler.
+        
+        Args:
+            ivr_agent: IVR agent for making navigation decisions
+            on_suggestion: Callback when agent makes a suggestion
+        """
+        self.ivr_agent = ivr_agent
+        self.on_suggestion = on_suggestion
         self.event_count = {
             "vad": 0,
             "asr": 0,
@@ -85,7 +93,7 @@ class EventHandler:
         confidence = asr_data.confidence
         is_final = asr_data.is_final
         
-        # Log final transcriptions
+        # Log transcriptions
         if is_final:
             logger.info(
                 f"ASR [{session_id}] FINAL: \"{text}\" "
@@ -97,12 +105,21 @@ class EventHandler:
                 f"(confidence: {confidence:.2f})"
             )
         
-        # TODO: Implement ASR event processing logic
-        # For example:
-        # - Build conversation history
-        # - Detect intents and entities
-        # - Generate suggestions based on transcribed text
-        # - Send LLM prompts for agent responses
+        # Process transcript with IVR agent
+        if self.ivr_agent and text:
+            try:
+                decision = self.ivr_agent.on_transcript(text, is_final, confidence)
+                
+                if decision and self.on_suggestion:
+                    # Agent made a decision - send suggestion
+                    logger.info(
+                        f"Agent decision for [{session_id}]: Press '{decision['digit']}' - "
+                        f"{decision['reasoning']}"
+                    )
+                    self.on_suggestion(session_id, decision)
+                    
+            except Exception as e:
+                logger.error(f"Error processing transcript with agent: {e}", exc_info=True)
         
     def _handle_call_event(
         self, 
@@ -122,11 +139,10 @@ class EventHandler:
             f"call_sid={call_sid}"
         )
         
-        # TODO: Implement call event processing logic
-        # For example:
-        # - Initialize session state on call start
-        # - Clean up resources on call end
-        # - Track call duration and metrics
+        # Reset agent state on new call
+        if self.ivr_agent and status in ["connecting", "in_call"]:
+            logger.info(f"Resetting agent for new call: {session_id}")
+            self.ivr_agent.reset()
         
     def _handle_other_event(
         self, 

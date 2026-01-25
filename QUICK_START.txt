@@ -1,0 +1,85 @@
+╔═══════════════════════════════════════════════════════════════╗
+║           🤖 REAL AGENT - QUICK START GUIDE                   ║
+╚═══════════════════════════════════════════════════════════════╝
+
+✅ SETUP COMPLETE - Ready to run!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 START SERVICES (4 terminals):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Terminal 1:
+  cd /root/rose3/apps/ai-audio-service
+  python3 -m ai_audio_service.server
+
+Terminal 2:
+  cd /root/rose3/apps/agent-service
+  python3 -m agent_service.main
+
+Terminal 3:
+  cd /root/rose3/apps/media-service
+  npm start
+
+Terminal 4:
+  cd /root/rose3/apps/web
+  npm run dev
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 OPEN WEB UI:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  http://localhost:3001
+
+  Click "Call" button → Agent will navigate IVR automatically
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👀 WHAT TO EXPECT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Call connects to IVR
+2. IVR speaks: "Press 1 for billing..."
+3. Deepgram transcribes → Blue box in UI
+4. Agent decides: "Press 1" → Green box in UI
+5. DTMF sent automatically
+6. Process repeats until human reached
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 VERIFY IT'S WORKING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Terminal 2 (Agent):
+  ✓ "LLM Decision: Press 'X' - ..."
+  ✓ "Queued suggestion: Press X"
+
+Terminal 3 (Media):
+  ✓ "Deepgram ASR enabled"
+  ✓ "[Deepgram] Final transcript: ..."
+  ✓ "[Agent] Successfully sent DTMF"
+
+Web UI:
+  ✓ Blue boxes (transcripts)
+  ✓ Green boxes (agent decisions)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 CONFIGURATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DeepSeek API:  ✓ Configured
+Deepgram ASR:  ✓ Configured
+Proto files:   ✓ Generated
+Dependencies:  ✓ Installed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📖 DOCUMENTATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  AGENT_READY_TO_RUN.md      - Detailed instructions
+  IMPLEMENTATION_COMPLETE.md  - Full implementation summary
+  start-agent.sh             - Setup verification script
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 READY TO GO! Start the 4 services and make a call! 🚀
+
+╚═══════════════════════════════════════════════════════════════╝
+
