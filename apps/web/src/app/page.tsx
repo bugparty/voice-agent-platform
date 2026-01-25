@@ -27,6 +27,14 @@ type CallState = {
   musicProb: number;
 };
 
+type TranscriptItem = {
+  id: string;
+  timestamp: number;
+  text: string;
+  confidence: number;
+  isFinal: boolean;
+};
+
 type UserState = {
   deviceStatus: DeviceStatus;
   micPermission: PermissionState;
@@ -51,6 +59,8 @@ export default function Page() {
   const [callState, setCallState] = useState<CallState>(DEFAULT_CALL_STATE);
   const [userState, setUserState] = useState<UserState>(DEFAULT_USER_STATE);
   const [error, setError] = useState<string | null>(null);
+  const [transcripts, setTranscripts] = useState<TranscriptItem[]>([]);
+  const [partialTranscript, setPartialTranscript] = useState<string>("");
   
   const baseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_MEDIA_SERVICE_URL || "http://localhost:4001",
@@ -76,6 +86,9 @@ export default function Page() {
           // Cleanup device on hangup
           destroyDevice();
           setUserState(DEFAULT_USER_STATE);
+          // Clear transcripts
+          setTranscripts([]);
+          setPartialTranscript("");
         }
       }
       if (event.category === "VAD") {
@@ -88,6 +101,26 @@ export default function Page() {
         } else if (action?.endsWith(".update")) {
           const prob = Number(event.payload?.prob ?? 0);
           setCallState((prev) => ({ ...prev, vadProb: prob, musicProb }));
+        }
+      }
+      if (event.category === "ASR") {
+        const text = event.payload?.text as string;
+        const confidence = Number(event.payload?.confidence ?? 0);
+        const isFinal = Boolean(event.payload?.isFinal);
+        
+        if (isFinal) {
+          // Add final transcript to history
+          setTranscripts((prev) => [{
+            id: event.id,
+            timestamp: event.ts,
+            text,
+            confidence,
+            isFinal: true,
+          }, ...prev].slice(0, 50)); // Keep last 50 transcripts
+          setPartialTranscript(""); // Clear partial
+        } else {
+          // Update partial transcript
+          setPartialTranscript(text);
         }
       }
     });
@@ -351,6 +384,63 @@ export default function Page() {
             <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
               <div>Session: {callState.sessionId}</div>
               <div>Conference: {callState.confName}</div>
+            </div>
+          )}
+        </div>
+        <div className="panel">
+          <h3>Transcripts</h3>
+          {callState.callStatus !== "IN_CALL" ? (
+            <p style={{ color: "#999", fontSize: "14px" }}>
+              Real-time transcripts will appear here during the call.
+            </p>
+          ) : (
+            <div style={{ marginBottom: "12px" }}>
+              {partialTranscript && (
+                <div style={{ 
+                  padding: "8px 12px", 
+                  background: "#f0f9ff", 
+                  borderLeft: "3px solid #0ea5e9",
+                  marginBottom: "8px",
+                  fontSize: "14px",
+                  fontStyle: "italic",
+                  color: "#666"
+                }}>
+                  {partialTranscript}
+                </div>
+              )}
+              <div style={{ 
+                maxHeight: "200px", 
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+              }}>
+                {transcripts.length === 0 && !partialTranscript && (
+                  <p style={{ color: "#999", fontSize: "13px" }}>
+                    Listening for speech...
+                  </p>
+                )}
+                {transcripts.map((transcript) => (
+                  <div 
+                    key={transcript.id}
+                    style={{ 
+                      padding: "8px 12px", 
+                      background: "#fff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "4px",
+                      fontSize: "14px"
+                    }}
+                  >
+                    <div style={{ marginBottom: "4px" }}>
+                      {transcript.text}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#999" }}>
+                      Confidence: {(transcript.confidence * 100).toFixed(0)}% · 
+                      {new Date(transcript.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

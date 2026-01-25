@@ -35,7 +35,15 @@ function getConfig() {
     eventsPath: process.env.EVENTS_PATH || "/events",
     usePythonVad: process.env.USE_PYTHON_VAD !== "false",
     aiAudioGrpcUrl: process.env.AI_AUDIO_GRPC_URL || "localhost:50051",
-    audioaiProtoPath: process.env.AUDIOAI_PROTO_PATH
+    audioaiProtoPath: process.env.AUDIOAI_PROTO_PATH,
+    // Deepgram ASR configuration
+    deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+    asrEnabled: process.env.ASR_ENABLED === "true",
+    asrLanguage: process.env.ASR_LANGUAGE || "en-US",
+    asrModel: process.env.ASR_MODEL || "nova-2",
+    // Agent gRPC server configuration
+    agentGrpcPort: Number(process.env.AGENT_GRPC_PORT || 50052),
+    agentProtoPath: process.env.AGENT_PROTO_PATH
   };
 }
 
