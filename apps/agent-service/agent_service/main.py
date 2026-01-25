@@ -45,7 +45,8 @@ def main():
     
     # Get configuration from environment
     media_service_url = os.getenv("MEDIA_SERVICE_GRPC_URL", "localhost:50052")
-    session_id = os.getenv("SESSION_ID", "test-session")
+    # "*" subscribes to all sessions (media-service handles the wildcard).
+    session_id = os.getenv("SESSION_ID", "*")
     event_filters = os.getenv("EVENT_FILTERS", "vad.*,asr.*,call.*").split(",")
     
     logger.info(f"Configuration:")
