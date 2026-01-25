@@ -121,6 +121,20 @@ function emitVad({ session, action, prob = 0.8, track, musicProb = 0.0 }) {
   );
 
   ivrController.handleVadEvent(session, action, source);
+
+  // Push VAD events to Agent if subscribed
+  if (session?.sessionId) {
+    agentServer.pushEvent(session.sessionId, {
+      type: `vad.${source}.${action}`,
+      timestamp: Date.now(),
+      payload: {
+        action,
+        prob,
+        track: source,
+        music_prob: musicProb
+      }
+    });
+  }
 }
 
 function emitDtmfEvent(session, { digits, status, reason }) {
