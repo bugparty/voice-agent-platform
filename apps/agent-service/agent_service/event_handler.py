@@ -1,7 +1,12 @@
 """Event handler for processing media-service events."""
 
+import asyncio
 import logging
-from typing import Dict, Any
+import threading
+from typing import Dict, Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agent_service.agent import CallFSM
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +14,12 @@ logger = logging.getLogger(__name__)
 class EventHandler:
     """Handles incoming events from media-service."""
 
-    def __init__(self, log_service=None):
+    # Class-level shared event loop for all EventHandler instances
+    _shared_loop: Optional[asyncio.AbstractEventLoop] = None
+    _loop_thread: Optional[threading.Thread] = None
+    _loop_lock = threading.Lock()
+
+    def __init__(self, log_service=None, call_fsm: Optional["CallFSM"] = None):
         """Initialize the event handler."""
         self.event_count = {
             "vad": 0,
@@ -18,6 +28,90 @@ class EventHandler:
             "other": 0
         }
         self.log_service = log_service
+        self.call_fsm = call_fsm
+        
+        # Ensure background event loop is started
+        self._ensure_loop_running()
+
+    def set_call_fsm(self, call_fsm: "CallFSM") -> None:
+        """Set the CallFSM instance for event routing."""
+        self.call_fsm = call_fsm
+
+    @classmethod
+    def _ensure_loop_running(cls) -> None:
+        """
+        Ensure the shared background event loop is running.
+        
+        This creates a dedicated thread for async operations, preventing
+        blocking of the main event processing thread.
+        """
+        with cls._loop_lock:
+            if cls._shared_loop is not None and not cls._shared_loop.is_closed():
+                return
+            
+            # Create new event loop
+            cls._shared_loop = asyncio.new_event_loop()
+            
+            def run_loop():
+                asyncio.set_event_loop(cls._shared_loop)
+                logger.debug("[EventHandler] Background event loop started")
+                cls._shared_loop.run_forever()
+                logger.debug("[EventHandler] Background event loop stopped")
+            
+            cls._loop_thread = threading.Thread(
+                target=run_loop,
+                name="EventHandler-AsyncLoop",
+                daemon=True
+            )
+            cls._loop_thread.start()
+            logger.info("[EventHandler] Started background event loop thread")
+
+    @classmethod
+    def _get_loop(cls) -> asyncio.AbstractEventLoop:
+        """
+        Get the shared background event loop.
+        
+        Returns:
+            The shared asyncio event loop running in a background thread.
+        """
+        cls._ensure_loop_running()
+        return cls._shared_loop
+
+    def _schedule_async(self, coro) -> None:
+        """
+        Schedule a coroutine to run in the background event loop.
+        
+        This is non-blocking - the coroutine runs asynchronously in the
+        background thread, allowing event processing to continue immediately.
+        
+        Args:
+            coro: The coroutine to schedule.
+        """
+        loop = self._get_loop()
+        future = asyncio.run_coroutine_threadsafe(coro, loop)
+        
+        # Add error callback to log exceptions
+        def on_done(fut):
+            try:
+                fut.result()
+            except Exception as e:
+                logger.error(f"[EventHandler] Async task failed: {e}", exc_info=True)
+        
+        future.add_done_callback(on_done)
+
+    @classmethod
+    def shutdown(cls) -> None:
+        """
+        Shutdown the background event loop.
+        
+        Call this during application shutdown to cleanly stop the loop.
+        """
+        with cls._loop_lock:
+            if cls._shared_loop is not None and cls._shared_loop.is_running():
+                cls._shared_loop.call_soon_threadsafe(cls._shared_loop.stop)
+                if cls._loop_thread is not None:
+                    cls._loop_thread.join(timeout=2.0)
+                logger.info("[EventHandler] Background event loop shutdown complete")
         
     def handle_event(self, event) -> None:
         """
@@ -72,11 +166,20 @@ class EventHandler:
                 f"prob={prob:.2f}, track={track}, music={music_prob:.2f}"
             )
         
-        # TODO: Implement VAD event processing logic
-        # For example:
-        # - Track conversation state
-        # - Detect when user starts/stops speaking
-        # - Trigger actions based on speech patterns
+        # Route to CallFSM if available (non-blocking)
+        if self.call_fsm is not None:
+            try:
+                coro = self.call_fsm.handle_vad_event(
+                    session_id=session_id,
+                    action=action,
+                    prob=prob,
+                    track=track,
+                    music_prob=music_prob,
+                    timestamp_ms=timestamp
+                )
+                self._schedule_async(coro)
+            except Exception as e:
+                logger.error(f"Failed to route VAD event to CallFSM: {e}", exc_info=True)
         
     def _handle_asr_event(
         self, 
@@ -92,6 +195,12 @@ class EventHandler:
         confidence = asr_data.confidence
         is_final = asr_data.is_final
         
+        # Determine track from event_type (e.g., "asr.remote.final" -> "remote")
+        track = "remote"
+        parts = event_type.split(".")
+        if len(parts) >= 2:
+            track = parts[1]
+        
         # Log final transcriptions
         if is_final:
             logger.info(
@@ -104,12 +213,20 @@ class EventHandler:
                 f"(confidence: {confidence:.2f})"
             )
         
-        # TODO: Implement ASR event processing logic
-        # For example:
-        # - Build conversation history
-        # - Detect intents and entities
-        # - Generate suggestions based on transcribed text
-        # - Send LLM prompts for agent responses
+        # Route to CallFSM if available (non-blocking)
+        if self.call_fsm is not None:
+            try:
+                coro = self.call_fsm.handle_asr_event(
+                    session_id=session_id,
+                    text=text,
+                    is_final=is_final,
+                    confidence=confidence,
+                    timestamp_ms=timestamp,
+                    track=track
+                )
+                self._schedule_async(coro)
+            except Exception as e:
+                logger.error(f"Failed to route ASR event to CallFSM: {e}", exc_info=True)
         
     def _handle_call_event(
         self, 
@@ -129,11 +246,18 @@ class EventHandler:
             f"call_sid={call_sid}"
         )
         
-        # TODO: Implement call event processing logic
-        # For example:
-        # - Initialize session state on call start
-        # - Clean up resources on call end
-        # - Track call duration and metrics
+        # Route to CallFSM if available (non-blocking)
+        if self.call_fsm is not None:
+            try:
+                coro = self.call_fsm.handle_call_event(
+                    session_id=session_id,
+                    status=status,
+                    call_sid=call_sid,
+                    timestamp_ms=timestamp
+                )
+                self._schedule_async(coro)
+            except Exception as e:
+                logger.error(f"Failed to route call event to CallFSM: {e}", exc_info=True)
         
     def _handle_other_event(
         self, 

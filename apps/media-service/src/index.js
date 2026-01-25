@@ -7,7 +7,7 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 const { getConfig } = require("./config/env");
 const { emitUiEvent, onUiEvent } = require("./events/bus");
-const { twilioEvent, vadEvent,asrEvent, dtmfEvent, ivrEvent } = require("./events/normalize");
+const { twilioEvent, vadEvent, asrEvent, dtmfEvent, ivrEvent, agentMessageEvent } = require("./events/normalize");
 const { buildTwiml, buildOutboundConferenceTwiml, buildWebJoinConferenceTwiml, buildDtmfTwiml } = require("./twilio/twiml");
 const { createTwilioClient, startCall, hangupCall, sendDtmf } = require("./twilio/callControl");
 const { 
@@ -44,6 +44,7 @@ app.use((req, res, next) => {
 
 const twilioClient = createTwilioClient(config);
 let activeCallSid = null;
+let lastActiveSessionId = null;
 const streamSockets = new Map();
 const CONFERENCE_END_GRACE_MS = 15000;
 
@@ -75,16 +76,65 @@ if (config.agentGrpcPort) {
       config.agentGrpcPort, 
       agentProtoPath,
       (suggestionData) => {
-        // Handle agent suggestions
+        // Handle agent suggestions (acts as commands)
         const { sessionId, suggestion } = suggestionData;
         console.log(`[media-service] Received agent suggestion for session ${sessionId}:`, {
           suggestionId: suggestion.suggestion_id,
           plan: suggestion.plan,
           actions: suggestion.actions?.length || 0
         });
-        
-        // TODO: Implement suggestion execution logic
-        // For now, just log it
+
+        const actions = suggestion.actions || [];
+        actions.forEach((action) => {
+          const sayText = action.say_tts?.text || action.sayTts?.text;
+          const hintText = action.copilot_hint?.text || action.copilotHint?.text;
+          const dtmfDigits =
+            action.send_dtmf?.digits ||
+            action.sendDtmf?.digits ||
+            action.dtmf?.digits ||
+            action.dtmf?.text;
+
+          if (sayText) {
+            emitUiEvent(agentMessageEvent({
+              ts: Date.now(),
+              sessionId,
+              text: sayText,
+              kind: "say_tts"
+            }));
+          }
+          if (hintText) {
+            emitUiEvent(agentMessageEvent({
+              ts: Date.now(),
+              sessionId,
+              text: hintText,
+              kind: "copilot_hint"
+            }));
+          }
+
+          if (dtmfDigits) {
+            const resolvedSessionId = resolveAgentSessionId(sessionId);
+            if (!resolvedSessionId) {
+              console.warn("[media-service] Agent DTMF ignored: no active session", { sessionId, lastActiveSessionId });
+              return;
+            }
+
+            const session = getSessionBySessionId(resolvedSessionId);
+            if (!session) {
+              console.warn("[media-service] Agent DTMF ignored: session not found", resolvedSessionId);
+              return;
+            }
+
+            void (async () => {
+              try {
+                console.log(`[media-service] Agent DTMF command: sessionId=${resolvedSessionId}, digits=${dtmfDigits}`);
+                await sendDtmfWithPolicy(session, dtmfDigits, "agent");
+                console.log(`[media-service] Agent DTMF success: digits=${dtmfDigits}`);
+              } catch (error) {
+                console.warn(`[media-service] Agent DTMF failed: ${error?.message || error}`);
+              }
+            })();
+          }
+        });
       }
     );
     console.log(`[media-service] Agent gRPC server starting on port ${config.agentGrpcPort}`);
@@ -159,6 +209,14 @@ function emitIvrEvent(session, state, detail) {
       detail
     })
   );
+}
+
+function resolveAgentSessionId(sessionId) {
+  const validSessionId = sessionId && sessionId !== "*" && sessionId !== "all";
+  if (validSessionId) {
+    return sessionId;
+  }
+  return lastActiveSessionId;
 }
 
 function validateDigits(digits) {
@@ -402,6 +460,7 @@ app.post("/call/start", async (req, res) => {
       callSid: call.sid,
       streamSid: null 
     });
+    lastActiveSessionId = session.sessionId;
     ivrController.initSession(session);
     
     emitTwilio({
@@ -651,6 +710,7 @@ wss.on("connection", (socket) => {
       // Try to get existing session or create new one
       let session = sessionId ? getSessionBySessionId(sessionId) : null;
       if (session) {
+        lastActiveSessionId = session.sessionId;
         const oldStreamSid = session.streamSid;
         // Update existing session with streamSid
         console.log("[media-service] Found existing session", {
@@ -689,12 +749,15 @@ wss.on("connection", (socket) => {
         // Create new session (fallback for legacy flow)
         console.log("[media-service] Creating new session (legacy fallback)");
         session = createSession({ streamSid, callSid });
+        lastActiveSessionId = session.sessionId;
         session.lastMediaStartAt = Date.now();
         ivrController.initSession(session);
       }
       // Initialize Deepgram ASR if enabled
       if (config.asrEnabled && config.deepgramApiKey) {
         console.log(`[media-service] Creating Deepgram connection for session ${sessionId || streamSid}`);
+        session.asrConnecting = true;
+        session.asrDisabled = false;
         
         deepgramClient.createConnection(
           sessionId || streamSid,
@@ -752,9 +815,17 @@ wss.on("connection", (socket) => {
             },
             onError: (errorData) => {
               console.error(`[media-service] Deepgram error for session ${errorData.sessionId}:`, errorData.error);
+            },
+            onClose: (closeData) => {
+              console.warn(`[media-service] Deepgram connection closed unexpectedly for session ${closeData.sessionId}, code=${closeData.code}`);
+              session.asrDisabled = true;
             }
           }
-        ).catch((error) => {
+        ).then(() => {
+          session.asrConnecting = false;
+        }).catch((error) => {
+          session.asrConnecting = false;
+          session.asrDisabled = true;
           console.error(`[media-service] Failed to create Deepgram connection:`, error);
         });
       }
@@ -1106,9 +1177,20 @@ wss.on("connection", (socket) => {
       
       // Send audio to Deepgram ASR if enabled
       if (config.asrEnabled && config.deepgramApiKey) {
-        const sessionId = session.sessionId || streamSid;
-        const payload = Buffer.from(message.media.payload, "base64");
-        deepgramClient.sendAudio(sessionId, payload);
+        if (!session.asrDisabled) {
+          const sessionId = session.sessionId || streamSid;
+          const hasConnection = deepgramClient.hasConnection(sessionId);
+          if (hasConnection) {
+            const payload = Buffer.from(message.media.payload, "base64");
+            deepgramClient.sendAudio(sessionId, payload);
+          } else if (!session.asrConnecting) {
+            // Avoid spamming logs when connection isn't ready
+            session._asrNoConnCount = (session._asrNoConnCount || 0) + 1;
+            if (session._asrNoConnCount === 1 || session._asrNoConnCount % 200 === 0) {
+              console.warn(`[media-service] Deepgram not connected yet for session ${sessionId}`);
+            }
+          }
+        }
       }
       return;
     }
@@ -1118,10 +1200,16 @@ wss.on("connection", (socket) => {
       const streamSid = message.streamSid;
       const session = getSession(streamSid);
       
-      // Close Deepgram connection if active
-      if (config.asrEnabled && config.deepgramApiKey) {
-        const sessionId = session?.sessionId || streamSid;
-        deepgramClient.closeConnection(sessionId);
+      // Only close Deepgram connection if this is still the active stream for the session
+      // This prevents race conditions where a new stream starts before the old one stops
+      if (config.asrEnabled && config.deepgramApiKey && session) {
+        const isCurrentStream = session.streamSid === streamSid || session.streamSid === null;
+        if (isCurrentStream) {
+          const sessionId = session.sessionId || streamSid;
+          deepgramClient.closeConnection(sessionId);
+        } else {
+          console.log(`[media-service] Skipping Deepgram close for old stream ${streamSid} (current: ${session.streamSid})`);
+        }
       }
       
       if (session?.grpcStream) {

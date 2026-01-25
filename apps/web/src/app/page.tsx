@@ -27,12 +27,12 @@ type CallState = {
   musicProb: number;
 };
 
-type TranscriptItem = {
+type MessageItem = {
   id: string;
   timestamp: number;
   text: string;
-  confidence: number;
-  isFinal: boolean;
+  source: "caller" | "agent";
+  confidence?: number;
 };
 
 type UserState = {
@@ -59,7 +59,7 @@ export default function Page() {
   const [callState, setCallState] = useState<CallState>(DEFAULT_CALL_STATE);
   const [userState, setUserState] = useState<UserState>(DEFAULT_USER_STATE);
   const [error, setError] = useState<string | null>(null);
-  const [transcripts, setTranscripts] = useState<TranscriptItem[]>([]);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [partialTranscript, setPartialTranscript] = useState<string>("");
   
   const baseUrl = useMemo(
@@ -86,8 +86,8 @@ export default function Page() {
           // Cleanup device on hangup
           destroyDevice();
           setUserState(DEFAULT_USER_STATE);
-          // Clear transcripts
-          setTranscripts([]);
+          // Clear messages
+          setMessages([]);
           setPartialTranscript("");
         }
       }
@@ -109,18 +109,29 @@ export default function Page() {
         const isFinal = Boolean(event.payload?.isFinal);
         
         if (isFinal) {
-          // Add final transcript to history
-          setTranscripts((prev) => [{
+          // Add final transcript to messages
+          setMessages((prev) => [{
             id: event.id,
             timestamp: event.ts,
             text,
             confidence,
-            isFinal: true,
-          }, ...prev].slice(0, 50)); // Keep last 50 transcripts
+            source: "caller",
+          }, ...prev].slice(0, 50)); // Keep last 50 messages
           setPartialTranscript(""); // Clear partial
         } else {
           // Update partial transcript
           setPartialTranscript(text);
+        }
+      }
+      if (event.category === "AGENT") {
+        const text = event.payload?.text as string;
+        if (text) {
+          setMessages((prev) => [{
+            id: event.id,
+            timestamp: event.ts,
+            text,
+            source: "agent",
+          }, ...prev].slice(0, 50));
         }
       }
     });
@@ -389,10 +400,10 @@ export default function Page() {
           />
         </div>
         <div className="panel">
-          <h3>Transcripts</h3>
+          <h3>Messages</h3>
           {callState.callStatus !== "IN_CALL" ? (
             <p style={{ color: "#374151", fontSize: "14px" }}>
-              Real-time transcripts will appear here during the call.
+              Live call messages will appear here during the call.
             </p>
           ) : (
             <div style={{ marginBottom: "12px" }}>
@@ -419,14 +430,14 @@ export default function Page() {
                 flexDirection: "column",
                 gap: "8px"
               }}>
-                {transcripts.length === 0 && !partialTranscript && (
+                {messages.length === 0 && !partialTranscript && (
                   <p style={{ color: "#374151", fontSize: "13px" }}>
                     Listening for speech...
                   </p>
                 )}
-                {transcripts.map((transcript) => (
+                {messages.map((message) => (
                   <div 
-                    key={transcript.id}
+                    key={message.id}
                     style={{ 
                       padding: "12px 16px", 
                       background: "rgba(30, 41, 59, 0.8)",
@@ -439,11 +450,15 @@ export default function Page() {
                     }}
                   >
                     <div style={{ marginBottom: "4px" }}>
-                      {transcript.text}
+                      {message.text}
                     </div>
                     <div style={{ fontSize: "11px", color: "#94a3b8" }}>
-                      Confidence: {(transcript.confidence * 100).toFixed(0)}% · 
-                      {new Date(transcript.timestamp).toLocaleTimeString()}
+                      {message.source === "agent" ? "Agent" : "Caller"}
+                      {message.confidence !== undefined && (
+                        <> · Confidence: {(message.confidence * 100).toFixed(0)}%</>
+                      )}
+                      {" · "}
+                      {new Date(message.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
                 ))}
