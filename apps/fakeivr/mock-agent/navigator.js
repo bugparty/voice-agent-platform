@@ -18,7 +18,8 @@ const __dirname = dirname(__filename);
 export class IVRNavigator {
   constructor(treeJsonPath = null) {
     // Load IVR tree from JSON
-    const treePath = treeJsonPath || join(__dirname, '../ivr-tree.json');
+    // Default to simple scenario in data folder
+    const treePath = treeJsonPath || join(__dirname, 'data/ivr-simple.json');
     this.tree = JSON.parse(readFileSync(treePath, 'utf-8'));
     
     // Initialize navigation state
@@ -76,6 +77,25 @@ export class IVRNavigator {
 
     // Check if option exists
     if (!option) {
+      // Check for hidden options (e.g., pressing "0" for operator)
+      const features = this.tree.features || {};
+      if (features.hidden_option_enabled && optionKey === features.hidden_option_key) {
+        // Hidden option discovered!
+        const action = features.hidden_option_action;
+        
+        if (action === 'TRANSFER_TO_HUMAN') {
+          this.isConnectedToHuman = true;
+          return {
+            success: true,
+            message: `🎉 HIDDEN OPTION DISCOVERED! Pressed '${optionKey}' (not listed in menu). Connected to human representative!`,
+            isHumanConnection: true,
+            isHiddenOption: true,
+            totalSteps: this.selectionCount
+          };
+        }
+      }
+      
+      // No hidden option or wrong key - return error
       return {
         success: false,
         message: `Invalid option '${optionKey}'. Valid options: ${Object.keys(menu.options).join(', ')}`,

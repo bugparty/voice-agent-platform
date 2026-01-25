@@ -1,0 +1,550 @@
+{
+  "meta": {
+    "company": "SneakyTech Solutions",
+    "version": "2.0-hidden",
+    "notes": [
+      "This is a HIDDEN scenario IVR tree.",
+      "Option '0' is NOT listed in any menu options.",
+      "BUT pressing '0' at ANY menu will connect to human.",
+      "Tests if agent can discover hidden options through exploration.",
+      "Smart agents should try common hidden keys like '0' for operator."
+    ]
+  },
+  "features": {
+    "human_transfer_available": true,
+    "human_option_advertised": false,
+    "hidden_option_enabled": true,
+    "hidden_option_key": "0",
+    "hidden_option_action": "TRANSFER_TO_HUMAN"
+  },
+  "entry": "welcome_menu",
+  "menus": {
+    "welcome_menu": {
+      "prompt": "Thank you for calling SneakyTech Solutions. Please listen carefully as our menu options have changed.",
+      "options": {
+        "1": { "label": "Product support", "next": "support_menu" },
+        "2": { "label": "Sales and pricing", "next": "sales_menu" },
+        "3": { "label": "Account management", "next": "account_menu" },
+        "4": { "label": "Company information", "next": "info_menu" },
+        "9": { "label": "Repeat this menu", "next": "welcome_menu" }
+      }
+    },
+
+    "support_menu": {
+      "prompt": "Product support. Press 1 for technical issues, 2 for returns, 3 for warranty, or 9 to go back.",
+      "options": {
+        "1": { "label": "Technical issues", "next": "technical_menu" },
+        "2": { "label": "Returns and exchanges", "next": "returns_menu" },
+        "3": { "label": "Warranty information", "next": "warranty_menu" },
+        "9": { "label": "Return to main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "technical_menu": {
+      "prompt": "Technical support. Press 1 for software, 2 for hardware, 3 for network issues.",
+      "options": {
+        "1": { "label": "Software problems", "next": "software_menu" },
+        "2": { "label": "Hardware problems", "next": "hardware_menu" },
+        "3": { "label": "Network connectivity", "next": "network_menu" },
+        "9": { "label": "Go back", "next": "support_menu" }
+      }
+    },
+
+    "software_menu": {
+      "prompt": "Software support. Select your product: Press 1 for App version 3, press 2 for App version 4, press 3 for other versions.",
+      "options": {
+        "1": { "label": "App version 3", "next": "software_v3_menu" },
+        "2": { "label": "App version 4", "next": "software_v4_menu" },
+        "3": { "label": "Other versions", "next": "software_other_menu" },
+        "9": { "label": "Previous menu", "next": "technical_menu" }
+      }
+    },
+
+    "software_v3_menu": {
+      "prompt": "Version 3 support. For installation issues press 1, for crashes press 2, for updates press 3.",
+      "options": {
+        "1": { "label": "Installation help", "next": "install_help_menu" },
+        "2": { "label": "Crash reports", "next": "crash_help_menu" },
+        "3": { "label": "Update problems", "next": "update_help_menu" },
+        "9": { "label": "Go back", "next": "software_menu" }
+      }
+    },
+
+    "software_v4_menu": {
+      "prompt": "Version 4 support. Press 1 for getting started, 2 for advanced features, 3 for troubleshooting.",
+      "options": {
+        "1": { "label": "Getting started", "next": "getting_started_menu" },
+        "2": { "label": "Advanced features", "next": "advanced_menu" },
+        "3": { "label": "Troubleshooting", "next": "troubleshoot_menu" },
+        "9": { "label": "Previous menu", "next": "software_menu" }
+      }
+    },
+
+    "software_other_menu": {
+      "prompt": "For legacy product support, press 1. For beta versions, press 2.",
+      "options": {
+        "1": { "label": "Legacy products", "next": "legacy_menu" },
+        "2": { "label": "Beta versions", "next": "beta_menu" },
+        "9": { "label": "Go back", "next": "software_menu" }
+      }
+    },
+
+    "install_help_menu": {
+      "prompt": "Installation troubleshooting. This is an automated system. Press 1 for system requirements, 2 for common errors, 9 to return.",
+      "options": {
+        "1": { "label": "System requirements", "next": "requirements_menu" },
+        "2": { "label": "Common installation errors", "next": "install_errors_menu" },
+        "9": { "label": "Go back", "next": "software_v3_menu" }
+      }
+    },
+
+    "crash_help_menu": {
+      "prompt": "Crash diagnostics. Press 1 to report a crash, 2 for crash logs, 3 for recovery options.",
+      "options": {
+        "1": { "label": "Report crash", "next": "report_crash_menu" },
+        "2": { "label": "Crash log instructions", "next": "crash_logs_menu" },
+        "3": { "label": "Recovery mode", "next": "recovery_menu" },
+        "9": { "label": "Return", "next": "software_v3_menu" }
+      }
+    },
+
+    "update_help_menu": {
+      "prompt": "Update support. Press 1 for automatic updates, 2 for manual updates, 3 if update failed.",
+      "options": {
+        "1": { "label": "Enable automatic updates", "next": "auto_update_menu" },
+        "2": { "label": "Manual update guide", "next": "manual_update_menu" },
+        "3": { "label": "Failed update recovery", "next": "update_failed_menu" },
+        "9": { "label": "Go back", "next": "software_v3_menu" }
+      }
+    },
+
+    "getting_started_menu": {
+      "prompt": "Getting started with version 4. Press 1 for tutorial, 2 for quick setup, 3 for migration guide.",
+      "options": {
+        "1": { "label": "Interactive tutorial", "next": "tutorial_menu" },
+        "2": { "label": "Quick setup wizard", "next": "quick_setup_menu" },
+        "3": { "label": "Migrate from version 3", "next": "migration_menu" },
+        "9": { "label": "Previous menu", "next": "software_v4_menu" }
+      }
+    },
+
+    "advanced_menu": {
+      "prompt": "Advanced features. Press 1 for API integration, 2 for custom scripts, 3 for enterprise features.",
+      "options": {
+        "1": { "label": "API documentation", "next": "api_menu" },
+        "2": { "label": "Custom scripting", "next": "scripting_menu" },
+        "3": { "label": "Enterprise features", "next": "enterprise_menu" },
+        "9": { "label": "Go back", "next": "software_v4_menu" }
+      }
+    },
+
+    "troubleshoot_menu": {
+      "prompt": "Version 4 troubleshooting. Press 1 for performance issues, 2 for error messages, 3 for compatibility.",
+      "options": {
+        "1": { "label": "Performance optimization", "next": "performance_menu" },
+        "2": { "label": "Error code lookup", "next": "error_lookup_menu" },
+        "3": { "label": "Compatibility checker", "next": "compatibility_menu" },
+        "9": { "label": "Return", "next": "software_v4_menu" }
+      }
+    },
+
+    "hardware_menu": {
+      "prompt": "Hardware support. Press 1 for device setup, 2 for repairs, 3 for replacements.",
+      "options": {
+        "1": { "label": "Device setup and configuration", "next": "device_setup_menu" },
+        "2": { "label": "Repair services", "next": "repair_menu" },
+        "3": { "label": "Replacement requests", "next": "replacement_menu" },
+        "9": { "label": "Go back", "next": "technical_menu" }
+      }
+    },
+
+    "network_menu": {
+      "prompt": "Network support. Press 1 for WiFi issues, 2 for Ethernet problems, 3 for firewall settings.",
+      "options": {
+        "1": { "label": "WiFi troubleshooting", "next": "wifi_menu" },
+        "2": { "label": "Ethernet connection", "next": "ethernet_menu" },
+        "3": { "label": "Firewall configuration", "next": "firewall_menu" },
+        "9": { "label": "Previous menu", "next": "technical_menu" }
+      }
+    },
+
+    "returns_menu": {
+      "prompt": "Returns and exchanges. Press 1 to start a return, 2 to check return status, 3 for return policy.",
+      "options": {
+        "1": { "label": "Initiate return", "next": "initiate_return_menu" },
+        "2": { "label": "Return status", "next": "return_status_menu" },
+        "3": { "label": "Return policy information", "next": "return_policy_menu" },
+        "9": { "label": "Go back", "next": "support_menu" }
+      }
+    },
+
+    "warranty_menu": {
+      "prompt": "Warranty services. Press 1 to check warranty status, 2 to file a claim, 3 for extended warranty.",
+      "options": {
+        "1": { "label": "Check warranty coverage", "next": "warranty_check_menu" },
+        "2": { "label": "File warranty claim", "next": "warranty_claim_menu" },
+        "3": { "label": "Purchase extended warranty", "next": "extended_warranty_menu" },
+        "9": { "label": "Return to support", "next": "support_menu" }
+      }
+    },
+
+    "sales_menu": {
+      "prompt": "Sales and pricing. Press 1 for product catalog, 2 for current promotions, 3 for bulk orders.",
+      "options": {
+        "1": { "label": "Product catalog", "next": "catalog_menu" },
+        "2": { "label": "Current promotions", "next": "promotions_menu" },
+        "3": { "label": "Bulk and enterprise sales", "next": "bulk_sales_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "account_menu": {
+      "prompt": "Account management. Press 1 for account settings, 2 for subscription, 3 for billing, 4 for password reset.",
+      "options": {
+        "1": { "label": "Account settings", "next": "settings_menu" },
+        "2": { "label": "Subscription management", "next": "subscription_menu" },
+        "3": { "label": "Billing inquiries", "next": "billing_menu" },
+        "4": { "label": "Password and security", "next": "password_menu" },
+        "9": { "label": "Return to main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "info_menu": {
+      "prompt": "Company information. Press 1 for about us, 2 for contact information, 3 for careers.",
+      "options": {
+        "1": { "label": "About SneakyTech", "next": "about_menu" },
+        "2": { "label": "Contact information", "next": "contact_menu" },
+        "3": { "label": "Career opportunities", "next": "careers_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "legacy_menu": {
+      "prompt": "Legacy product support is limited. Press 1 for documentation, 2 for end-of-life information.",
+      "options": {
+        "1": { "label": "Legacy documentation", "next": "legacy_docs_menu" },
+        "2": { "label": "End-of-life schedule", "next": "eol_menu" },
+        "9": { "label": "Go back", "next": "software_other_menu" }
+      }
+    },
+
+    "beta_menu": {
+      "prompt": "Beta version support. Press 1 for known issues, 2 to report bugs, 3 for release notes.",
+      "options": {
+        "1": { "label": "Known beta issues", "next": "beta_issues_menu" },
+        "2": { "label": "Bug reporting", "next": "bug_report_menu" },
+        "3": { "label": "Beta release notes", "next": "release_notes_menu" },
+        "9": { "label": "Previous menu", "next": "software_other_menu" }
+      }
+    },
+
+    "requirements_menu": {
+      "prompt": "System requirements: Windows 10 or higher, 8GB RAM, 2GB disk space. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "install_help_menu" }
+      }
+    },
+
+    "install_errors_menu": {
+      "prompt": "Common errors include error 1001, 2003, and 5005. Visit our website for detailed solutions. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "install_help_menu" }
+      }
+    },
+
+    "report_crash_menu": {
+      "prompt": "Please submit crash reports through our website or app. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "crash_help_menu" }
+      }
+    },
+
+    "crash_logs_menu": {
+      "prompt": "Crash logs are located in your app data folder, subfolder logs. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "crash_help_menu" }
+      }
+    },
+
+    "recovery_menu": {
+      "prompt": "To enter recovery mode, hold F8 during startup. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "crash_help_menu" }
+      }
+    },
+
+    "auto_update_menu": {
+      "prompt": "Automatic updates can be enabled in settings, preferences, update options. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "update_help_menu" }
+      }
+    },
+
+    "manual_update_menu": {
+      "prompt": "For manual updates, download the latest version from our website. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "update_help_menu" }
+      }
+    },
+
+    "update_failed_menu": {
+      "prompt": "If update failed, try uninstalling and reinstalling. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "update_help_menu" }
+      }
+    },
+
+    "tutorial_menu": {
+      "prompt": "Tutorial videos are available on our YouTube channel. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "getting_started_menu" }
+      }
+    },
+
+    "quick_setup_menu": {
+      "prompt": "Quick setup wizard is available in the app after first launch. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "getting_started_menu" }
+      }
+    },
+
+    "migration_menu": {
+      "prompt": "Migration tool is built into version 4. Your data will transfer automatically. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "getting_started_menu" }
+      }
+    },
+
+    "api_menu": {
+      "prompt": "API documentation is available at developer dot sneakytech dot com. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "advanced_menu" }
+      }
+    },
+
+    "scripting_menu": {
+      "prompt": "Custom scripting guide available in our developer portal. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "advanced_menu" }
+      }
+    },
+
+    "enterprise_menu": {
+      "prompt": "Enterprise features require a business license. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "advanced_menu" }
+      }
+    },
+
+    "performance_menu": {
+      "prompt": "For performance tips, visit our optimization guide online. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "troubleshoot_menu" }
+      }
+    },
+
+    "error_lookup_menu": {
+      "prompt": "Error code database available at support dot sneakytech dot com. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "troubleshoot_menu" }
+      }
+    },
+
+    "compatibility_menu": {
+      "prompt": "Compatibility checker tool available for download on our website. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "troubleshoot_menu" }
+      }
+    },
+
+    "device_setup_menu": {
+      "prompt": "Device setup guides are included in product packaging. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "hardware_menu" }
+      }
+    },
+
+    "repair_menu": {
+      "prompt": "Repair services can be scheduled through our website. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "hardware_menu" }
+      }
+    },
+
+    "replacement_menu": {
+      "prompt": "Replacement requests require a valid warranty. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "hardware_menu" }
+      }
+    },
+
+    "wifi_menu": {
+      "prompt": "For WiFi issues, restart your router and check signal strength. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "network_menu" }
+      }
+    },
+
+    "ethernet_menu": {
+      "prompt": "Check cable connections and network adapter settings. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "network_menu" }
+      }
+    },
+
+    "firewall_menu": {
+      "prompt": "Firewall configuration varies by operating system. See online guide. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "network_menu" }
+      }
+    },
+
+    "initiate_return_menu": {
+      "prompt": "Returns can be initiated through your online account. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "returns_menu" }
+      }
+    },
+
+    "return_status_menu": {
+      "prompt": "Check return status in your account dashboard online. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "returns_menu" }
+      }
+    },
+
+    "return_policy_menu": {
+      "prompt": "Returns accepted within 30 days with original packaging. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "returns_menu" }
+      }
+    },
+
+    "warranty_check_menu": {
+      "prompt": "Enter serial number on our website to check warranty. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "warranty_menu" }
+      }
+    },
+
+    "warranty_claim_menu": {
+      "prompt": "Warranty claims are processed online with proof of purchase. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "warranty_menu" }
+      }
+    },
+
+    "extended_warranty_menu": {
+      "prompt": "Extended warranty available for purchase within 90 days. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "warranty_menu" }
+      }
+    },
+
+    "catalog_menu": {
+      "prompt": "View our complete product catalog at shop dot sneakytech dot com. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "sales_menu" }
+      }
+    },
+
+    "promotions_menu": {
+      "prompt": "Current promotions listed on our homepage. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "sales_menu" }
+      }
+    },
+
+    "bulk_sales_menu": {
+      "prompt": "For bulk orders over 100 units, please use our business inquiry form online. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "sales_menu" }
+      }
+    },
+
+    "settings_menu": {
+      "prompt": "Account settings managed through your online profile. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "account_menu" }
+      }
+    },
+
+    "subscription_menu": {
+      "prompt": "Subscription can be upgraded or cancelled in your account settings. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "account_menu" }
+      }
+    },
+
+    "billing_menu": {
+      "prompt": "Billing history and invoices available in your account. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "account_menu" }
+      }
+    },
+
+    "password_menu": {
+      "prompt": "Password reset links can be requested on the login page. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "account_menu" }
+      }
+    },
+
+    "about_menu": {
+      "prompt": "SneakyTech Solutions, founded in 2010, specializes in innovative software. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "info_menu" }
+      }
+    },
+
+    "contact_menu": {
+      "prompt": "Email us at contact at sneakytech dot com. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "info_menu" }
+      }
+    },
+
+    "careers_menu": {
+      "prompt": "Job openings posted at careers dot sneakytech dot com. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "info_menu" }
+      }
+    },
+
+    "legacy_docs_menu": {
+      "prompt": "Legacy documentation archived on our support site. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "legacy_menu" }
+      }
+    },
+
+    "eol_menu": {
+      "prompt": "End of life dates vary by product. Check our website for details. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "legacy_menu" }
+      }
+    },
+
+    "beta_issues_menu": {
+      "prompt": "Beta known issues tracked in our issue tracker online. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "beta_menu" }
+      }
+    },
+
+    "bug_report_menu": {
+      "prompt": "Report bugs through our GitHub repository or feedback form. Press 9 to return.",
+      "options": {
+        "9": { "label": "Go back", "next": "beta_menu" }
+      }
+    },
+
+    "release_notes_menu": {
+      "prompt": "Release notes available in app or on our developer blog. Press 9 to return.",
+      "options": {
+        "9": { "label": "Return", "next": "beta_menu" }
+      }
+    }
+  }
+}
+

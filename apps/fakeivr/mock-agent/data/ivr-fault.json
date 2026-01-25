@@ -1,0 +1,470 @@
+{
+  "meta": {
+    "company": "FrustrationCo Services",
+    "version": "1.0-fault",
+    "notes": [
+      "This is a FAULT scenario IVR tree.",
+      "NO TRANSFER_TO_HUMAN action exists anywhere.",
+      "All paths eventually loop back or dead-end.",
+      "Designed to test agent behavior in impossible scenarios."
+    ]
+  },
+  "features": {
+    "human_transfer_available": false
+  },
+  "entry": "welcome_menu",
+  "menus": {
+    "welcome_menu": {
+      "prompt": "Welcome to FrustrationCo. Your call is very important to us. Please listen to all options.",
+      "options": {
+        "1": { "label": "For account services", "next": "account_menu" },
+        "2": { "label": "For technical support", "next": "tech_menu" },
+        "3": { "label": "For billing inquiries", "next": "billing_menu" },
+        "4": { "label": "To hear these options again", "next": "welcome_menu" },
+        "0": { "label": "For more options", "next": "more_options_menu" }
+      }
+    },
+
+    "account_menu": {
+      "prompt": "Account services. For your security, please select from the following options.",
+      "options": {
+        "1": { "label": "Check account status", "next": "account_status_menu" },
+        "2": { "label": "Update account information", "next": "update_info_menu" },
+        "3": { "label": "Account security", "next": "security_menu" },
+        "4": { "label": "Return to main menu", "next": "welcome_menu" },
+        "0": { "label": "Speak to a representative", "next": "agent_unavailable_menu" }
+      }
+    },
+
+    "account_status_menu": {
+      "prompt": "To check your account status, please select an option.",
+      "options": {
+        "1": { "label": "Account balance", "next": "balance_info_menu" },
+        "2": { "label": "Recent activity", "next": "activity_menu" },
+        "3": { "label": "Account verification required", "next": "verify_loop_menu" },
+        "9": { "label": "Return to account services", "next": "account_menu" }
+      }
+    },
+
+    "balance_info_menu": {
+      "prompt": "Your current balance information is unavailable at this time. Please try again later.",
+      "options": {
+        "1": { "label": "Try again", "next": "balance_info_menu" },
+        "2": { "label": "Return to account status", "next": "account_status_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "activity_menu": {
+      "prompt": "To view recent activity, please verify your identity first.",
+      "options": {
+        "1": { "label": "Verify identity", "next": "verify_loop_menu" },
+        "2": { "label": "Skip verification", "next": "verification_required_menu" },
+        "9": { "label": "Go back", "next": "account_status_menu" }
+      }
+    },
+
+    "verify_loop_menu": {
+      "prompt": "Please enter your account number followed by the pound sign, or press 1 to continue.",
+      "options": {
+        "1": { "label": "Continue without entering", "next": "verification_failed_menu" },
+        "2": { "label": "I don't have my account number", "next": "no_account_number_menu" },
+        "9": { "label": "Return to previous menu", "next": "account_menu" }
+      }
+    },
+
+    "verification_failed_menu": {
+      "prompt": "Verification failed. For security reasons, please try a different method.",
+      "options": {
+        "1": { "label": "Try again", "next": "verify_loop_menu" },
+        "2": { "label": "Alternative verification", "next": "alt_verify_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "alt_verify_menu": {
+      "prompt": "Alternative verification is currently unavailable. Please use standard verification.",
+      "options": {
+        "1": { "label": "Standard verification", "next": "verify_loop_menu" },
+        "2": { "label": "Request callback", "next": "callback_unavailable_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "no_account_number_menu": {
+      "prompt": "Without your account number, we cannot verify your identity. Please locate your account number and call back.",
+      "options": {
+        "1": { "label": "I found my account number", "next": "verify_loop_menu" },
+        "2": { "label": "Request account number by email", "next": "email_not_sent_menu" },
+        "9": { "label": "End call", "next": "goodbye_menu" }
+      }
+    },
+
+    "verification_required_menu": {
+      "prompt": "Verification is required to continue. You cannot skip this step.",
+      "options": {
+        "1": { "label": "Proceed to verification", "next": "verify_loop_menu" },
+        "2": { "label": "Try to skip again", "next": "verification_required_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "update_info_menu": {
+      "prompt": "To update account information, please complete verification first.",
+      "options": {
+        "1": { "label": "Complete verification", "next": "verify_loop_menu" },
+        "2": { "label": "Update without verification", "next": "verification_required_menu" },
+        "9": { "label": "Go back", "next": "account_menu" }
+      }
+    },
+
+    "security_menu": {
+      "prompt": "Account security menu. Please select an option.",
+      "options": {
+        "1": { "label": "Change password", "next": "password_online_only_menu" },
+        "2": { "label": "Two-factor authentication", "next": "tfa_online_only_menu" },
+        "3": { "label": "Security questions", "next": "security_questions_menu" },
+        "9": { "label": "Go back", "next": "account_menu" }
+      }
+    },
+
+    "password_online_only_menu": {
+      "prompt": "Password changes must be made through our website or mobile app. This option is not available by phone.",
+      "options": {
+        "1": { "label": "Get website address", "next": "website_info_menu" },
+        "2": { "label": "Request password reset link", "next": "email_not_sent_menu" },
+        "9": { "label": "Return to security menu", "next": "security_menu" }
+      }
+    },
+
+    "tfa_online_only_menu": {
+      "prompt": "Two-factor authentication settings must be configured online. Please visit our website.",
+      "options": {
+        "1": { "label": "Website information", "next": "website_info_menu" },
+        "9": { "label": "Go back", "next": "security_menu" }
+      }
+    },
+
+    "security_questions_menu": {
+      "prompt": "Security questions cannot be updated over the phone. Please use our online portal.",
+      "options": {
+        "1": { "label": "Online portal information", "next": "website_info_menu" },
+        "9": { "label": "Return to security menu", "next": "security_menu" }
+      }
+    },
+
+    "tech_menu": {
+      "prompt": "Technical support menu. Please describe your issue.",
+      "options": {
+        "1": { "label": "Login problems", "next": "login_help_menu" },
+        "2": { "label": "App not working", "next": "app_issues_menu" },
+        "3": { "label": "Website errors", "next": "website_errors_menu" },
+        "4": { "label": "Other technical issues", "next": "tech_other_menu" },
+        "0": { "label": "Speak to tech support", "next": "agent_unavailable_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "login_help_menu": {
+      "prompt": "Login assistance. For security, we cannot reset passwords by phone.",
+      "options": {
+        "1": { "label": "Reset password online", "next": "website_info_menu" },
+        "2": { "label": "Unlock account", "next": "unlock_online_only_menu" },
+        "3": { "label": "Forgot username", "next": "username_help_menu" },
+        "9": { "label": "Go back", "next": "tech_menu" }
+      }
+    },
+
+    "unlock_online_only_menu": {
+      "prompt": "Account unlocking must be done through our website for security reasons.",
+      "options": {
+        "1": { "label": "Get unlock instructions", "next": "website_info_menu" },
+        "2": { "label": "Request unlock code by email", "next": "email_not_sent_menu" },
+        "9": { "label": "Return to login help", "next": "login_help_menu" }
+      }
+    },
+
+    "username_help_menu": {
+      "prompt": "Username recovery is available online only.",
+      "options": {
+        "1": { "label": "Recover username online", "next": "website_info_menu" },
+        "2": { "label": "Email my username", "next": "email_not_sent_menu" },
+        "9": { "label": "Go back", "next": "login_help_menu" }
+      }
+    },
+
+    "app_issues_menu": {
+      "prompt": "App troubleshooting menu.",
+      "options": {
+        "1": { "label": "App won't open", "next": "app_reinstall_menu" },
+        "2": { "label": "App crashes", "next": "app_reinstall_menu" },
+        "3": { "label": "Features not working", "next": "app_update_menu" },
+        "9": { "label": "Return to tech support", "next": "tech_menu" }
+      }
+    },
+
+    "app_reinstall_menu": {
+      "prompt": "Please try uninstalling and reinstalling the app. If problem persists, visit our support website.",
+      "options": {
+        "1": { "label": "Get reinstall instructions", "next": "website_info_menu" },
+        "2": { "label": "Report app bug", "next": "bug_report_online_menu" },
+        "9": { "label": "Go back", "next": "app_issues_menu" }
+      }
+    },
+
+    "app_update_menu": {
+      "prompt": "Please ensure your app is updated to the latest version. Check your app store for updates.",
+      "options": {
+        "1": { "label": "App is up to date", "next": "app_reinstall_menu" },
+        "2": { "label": "Cannot update app", "next": "update_help_menu" },
+        "9": { "label": "Go back", "next": "app_issues_menu" }
+      }
+    },
+
+    "update_help_menu": {
+      "prompt": "Update instructions vary by device. Please visit our help center online.",
+      "options": {
+        "1": { "label": "Visit help center", "next": "website_info_menu" },
+        "9": { "label": "Return to app issues", "next": "app_issues_menu" }
+      }
+    },
+
+    "website_errors_menu": {
+      "prompt": "Website error reporting.",
+      "options": {
+        "1": { "label": "Cannot access website", "next": "website_access_menu" },
+        "2": { "label": "Error messages", "next": "error_message_menu" },
+        "3": { "label": "Page not loading", "next": "website_access_menu" },
+        "9": { "label": "Return to tech support", "next": "tech_menu" }
+      }
+    },
+
+    "website_access_menu": {
+      "prompt": "If you cannot access our website, please check your internet connection and try again later.",
+      "options": {
+        "1": { "label": "Check system status", "next": "system_status_menu" },
+        "2": { "label": "Alternative access methods", "next": "no_alternatives_menu" },
+        "9": { "label": "Go back", "next": "website_errors_menu" }
+      }
+    },
+
+    "error_message_menu": {
+      "prompt": "To report specific error messages, please submit a ticket through our online portal.",
+      "options": {
+        "1": { "label": "Access online portal", "next": "website_info_menu" },
+        "9": { "label": "Go back", "next": "website_errors_menu" }
+      }
+    },
+
+    "system_status_menu": {
+      "prompt": "System status information is available on our website only.",
+      "options": {
+        "1": { "label": "Get website address", "next": "website_info_menu" },
+        "9": { "label": "Return to previous menu", "next": "website_access_menu" }
+      }
+    },
+
+    "tech_other_menu": {
+      "prompt": "For other technical issues, please describe your problem on our support forum.",
+      "options": {
+        "1": { "label": "Access support forum", "next": "website_info_menu" },
+        "2": { "label": "Submit support ticket", "next": "ticket_online_only_menu" },
+        "9": { "label": "Return to tech support", "next": "tech_menu" }
+      }
+    },
+
+    "billing_menu": {
+      "prompt": "Billing inquiries menu.",
+      "options": {
+        "1": { "label": "Current charges", "next": "charges_menu" },
+        "2": { "label": "Payment methods", "next": "payment_menu" },
+        "3": { "label": "Dispute a charge", "next": "dispute_menu" },
+        "4": { "label": "Billing history", "next": "history_online_only_menu" },
+        "0": { "label": "Speak to billing department", "next": "agent_unavailable_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "charges_menu": {
+      "prompt": "Current charges information is available in your online account only.",
+      "options": {
+        "1": { "label": "View charges online", "next": "website_info_menu" },
+        "2": { "label": "Request charges by email", "next": "email_not_sent_menu" },
+        "9": { "label": "Return to billing", "next": "billing_menu" }
+      }
+    },
+
+    "payment_menu": {
+      "prompt": "Payment methods can be managed online or through our mobile app.",
+      "options": {
+        "1": { "label": "Add payment method online", "next": "website_info_menu" },
+        "2": { "label": "Make a payment", "next": "payment_online_only_menu" },
+        "9": { "label": "Go back", "next": "billing_menu" }
+      }
+    },
+
+    "payment_online_only_menu": {
+      "prompt": "Payments must be made through our secure online portal or mobile app for your security.",
+      "options": {
+        "1": { "label": "Get payment instructions", "next": "website_info_menu" },
+        "9": { "label": "Return to payment menu", "next": "payment_menu" }
+      }
+    },
+
+    "dispute_menu": {
+      "prompt": "To dispute a charge, you must submit a written request through our website.",
+      "options": {
+        "1": { "label": "Submit dispute online", "next": "website_info_menu" },
+        "2": { "label": "Dispute by phone", "next": "dispute_phone_unavailable_menu" },
+        "9": { "label": "Return to billing", "next": "billing_menu" }
+      }
+    },
+
+    "dispute_phone_unavailable_menu": {
+      "prompt": "Phone disputes are not accepted. All disputes must be submitted in writing through our online portal.",
+      "options": {
+        "1": { "label": "Go to online portal", "next": "website_info_menu" },
+        "9": { "label": "Go back", "next": "dispute_menu" }
+      }
+    },
+
+    "history_online_only_menu": {
+      "prompt": "Billing history is available in your online account dashboard.",
+      "options": {
+        "1": { "label": "Access account dashboard", "next": "website_info_menu" },
+        "9": { "label": "Return to billing menu", "next": "billing_menu" }
+      }
+    },
+
+    "more_options_menu": {
+      "prompt": "Additional options menu.",
+      "options": {
+        "1": { "label": "Company information", "next": "company_info_menu" },
+        "2": { "label": "Hours of operation", "next": "hours_menu" },
+        "3": { "label": "Location information", "next": "location_menu" },
+        "4": { "label": "Careers", "next": "careers_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "company_info_menu": {
+      "prompt": "For company information, please visit our website.",
+      "options": {
+        "1": { "label": "Get website address", "next": "website_info_menu" },
+        "9": { "label": "Go back", "next": "more_options_menu" }
+      }
+    },
+
+    "hours_menu": {
+      "prompt": "Our phone lines are open Monday through Friday, 9 AM to 5 PM. However, all services require online access.",
+      "options": {
+        "1": { "label": "Visit website for more info", "next": "website_info_menu" },
+        "9": { "label": "Return to more options", "next": "more_options_menu" }
+      }
+    },
+
+    "location_menu": {
+      "prompt": "Location information is available on our website.",
+      "options": {
+        "1": { "label": "Get website address", "next": "website_info_menu" },
+        "9": { "label": "Go back", "next": "more_options_menu" }
+      }
+    },
+
+    "careers_menu": {
+      "prompt": "Career opportunities are posted on our careers portal online.",
+      "options": {
+        "1": { "label": "Visit careers portal", "next": "website_info_menu" },
+        "9": { "label": "Return to more options", "next": "more_options_menu" }
+      }
+    },
+
+    "website_info_menu": {
+      "prompt": "Please visit our website at W W W dot FrustrationCo dot com. Have you visited the website?",
+      "options": {
+        "1": { "label": "Yes, but couldn't find what I need", "next": "website_navigation_menu" },
+        "2": { "label": "No, cannot access website", "next": "website_access_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "website_navigation_menu": {
+      "prompt": "Website navigation help is available in our online help center.",
+      "options": {
+        "1": { "label": "Try visiting website again", "next": "website_info_menu" },
+        "2": { "label": "Request help by email", "next": "email_not_sent_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "agent_unavailable_menu": {
+      "prompt": "All representatives are currently assisting other customers. Estimated wait time is over 2 hours. Please use our website for faster service.",
+      "options": {
+        "1": { "label": "Continue waiting", "next": "wait_more_menu" },
+        "2": { "label": "Use website instead", "next": "website_info_menu" },
+        "3": { "label": "Request callback", "next": "callback_unavailable_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "wait_more_menu": {
+      "prompt": "You have chosen to wait. Please continue holding. Your call is important to us.",
+      "options": {
+        "1": { "label": "Keep waiting", "next": "wait_more_menu" },
+        "2": { "label": "Stop waiting", "next": "agent_unavailable_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "callback_unavailable_menu": {
+      "prompt": "Callback service is currently unavailable. Please try again later or use our website.",
+      "options": {
+        "1": { "label": "Try callback again", "next": "callback_unavailable_menu" },
+        "2": { "label": "Visit website", "next": "website_info_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "email_not_sent_menu": {
+      "prompt": "Email service is currently experiencing technical difficulties. Please try again later or visit our website.",
+      "options": {
+        "1": { "label": "Try email again", "next": "email_not_sent_menu" },
+        "2": { "label": "Visit website instead", "next": "website_info_menu" },
+        "9": { "label": "Main menu", "next": "welcome_menu" }
+      }
+    },
+
+    "bug_report_online_menu": {
+      "prompt": "Bug reports must be submitted through our online bug tracking system.",
+      "options": {
+        "1": { "label": "Access bug tracking system", "next": "website_info_menu" },
+        "9": { "label": "Go back", "next": "app_reinstall_menu" }
+      }
+    },
+
+    "ticket_online_only_menu": {
+      "prompt": "Support tickets can only be created through our online support portal.",
+      "options": {
+        "1": { "label": "Go to support portal", "next": "website_info_menu" },
+        "9": { "label": "Return to tech support", "next": "tech_menu" }
+      }
+    },
+
+    "no_alternatives_menu": {
+      "prompt": "There are no alternative access methods available. Please use our website.",
+      "options": {
+        "1": { "label": "Get website address again", "next": "website_info_menu" },
+        "9": { "label": "Go back", "next": "website_access_menu" }
+      }
+    },
+
+    "goodbye_menu": {
+      "prompt": "Thank you for calling FrustrationCo. Please visit our website for all your service needs. Goodbye.",
+      "options": {
+        "1": { "label": "Return to main menu", "next": "welcome_menu" },
+        "2": { "label": "Hear goodbye message again", "next": "goodbye_menu" }
+      }
+    }
+  }
+}
+

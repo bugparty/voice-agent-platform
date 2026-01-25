@@ -1,6 +1,34 @@
 # How to Run the Mock IVR Agent
 
-There are two ways to run the mock agent:
+## 🎉 NEW: Interactive Mode (Recommended!)
+
+When you run the simulator, you now get an **interactive menu** to choose which scenario to test!
+
+```bash
+npm run simulate
+```
+
+You'll see:
+```
+══════════════════════════════════════════════════════════════════════
+           SELECT IVR SCENARIO TO TEST
+══════════════════════════════════════════════════════════════════════
+
+✅ 1. Simple Scenario - Easy 6-menu demo
+🏗️ 2. Complex Scenario - Realistic 87-menu system
+❌ 3. Fault Scenario - Impossible (no human)
+🔐 4. Hidden Scenario - Secret option '0'
+
+Enter your choice (1-4):
+```
+
+Just type `1`, `2`, `3`, or `4` and press Enter!
+
+---
+
+## Classic Ways to Run
+
+There are two additional ways to run the mock agent:
 
 ## Option 1: Visual Phone Call Simulator (Recommended)
 

@@ -189,10 +189,12 @@ async function main() {
     azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
     maxAttempts: parseInt(process.env.MAX_ATTEMPTS || '20'),
     allowMistakes: process.env.ALLOW_MISTAKES !== 'false',
-    mistakeProbability: parseFloat(process.env.MISTAKE_PROBABILITY || '0.15')
+    mistakeProbability: parseFloat(process.env.MISTAKE_PROBABILITY || '0.15'),
+    ivrTreePath: process.env.IVR_TREE_PATH || 'data/ivr-simple.json'
   };
 
   console.log(chalk.cyan('⚙️  Configuration:'));
+  console.log(chalk.white(`   IVR Scenario: ${config.ivrTreePath || 'data/ivr-simple.json'}`));
   console.log(chalk.white(`   Model: ${config.modelName}`));
   console.log(chalk.white(`   Max Attempts: ${config.maxAttempts}`));
   if (config.allowMistakes) {
