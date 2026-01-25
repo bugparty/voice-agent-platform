@@ -8,14 +8,16 @@ const { WebSocketServer } = require("ws");
 const { getConfig } = require("./config/env");
 const { emitUiEvent, onUiEvent } = require("./events/bus");
 const { twilioEvent, vadEvent, dtmfEvent, ivrEvent } = require("./events/normalize");
-const { buildTwiml, buildOutboundConferenceTwiml, buildWebJoinConferenceTwiml } = require("./twilio/twiml");
+const { buildTwiml, buildOutboundConferenceTwiml, buildWebJoinConferenceTwiml, buildDtmfTwiml } = require("./twilio/twiml");
 const { createTwilioClient, startCall, hangupCall, sendDtmf } = require("./twilio/callControl");
 const { 
   createSession, 
   getSession, 
   getSessionByCallSid,
   getSessionBySessionId,
+  detachStreamSid,
   deleteSession,
+  deleteSessionBySessionId,
   generateSessionId,
   generateConfName,
   updateSession,
@@ -40,6 +42,8 @@ app.use((req, res, next) => {
 
 const twilioClient = createTwilioClient(config);
 let activeCallSid = null;
+const streamSockets = new Map();
+const CONFERENCE_END_GRACE_MS = 15000;
 
 const DTMF_COOLDOWN_MS = 700;
 const DTMF_MAX_LEN = 16;
@@ -140,7 +144,23 @@ async function sendDtmfWithPolicy(session, digits, source) {
 
   try {
     console.log(`[media-service] sendDtmfWithPolicy calling Twilio...`);
-    await sendDtmf({ client: twilioClient, callSid: session.callSid, digits });
+    
+    // Build DTMF URL - Twilio will fetch TwiML from this URL
+    // The TwiML plays DTMF, restarts media stream, and rejoins conference
+    const dtmfUrl = session.sessionId && session.confName
+      ? `${config.publicBaseUrl}/twiml/dtmf?sessionId=${session.sessionId}&confName=${encodeURIComponent(session.confName)}&digits=${encodeURIComponent(digits)}`
+      : null;
+    
+    if (!dtmfUrl) {
+      console.warn(`[media-service] sendDtmfWithPolicy: No DTMF URL available (sessionId=${session.sessionId}, confName=${session.confName})`);
+    }
+    
+    await sendDtmf({ 
+      client: twilioClient, 
+      callSid: session.callSid, 
+      digits,
+      dtmfUrl
+    });
     session.lastDtmfAt = now;
     console.log(`[media-service] sendDtmfWithPolicy success`);
     emitDtmfEvent(session, { digits, status: "sent", reason: source });
@@ -226,10 +246,34 @@ app.post("/twiml/webJoin", (req, res) => {
   });
   
   const xml = buildWebJoinConferenceTwiml({
-    confName: session.confName
+    confName: session.confName,
+    publicBaseUrl: config.publicBaseUrl
   });
   
   console.log("[media-service] Returning webJoin TwiML:", xml);
+  res.type("text/xml").send(xml);
+});
+
+// DTMF TwiML endpoint - plays DTMF then rejoins conference
+// This is used by calls.update({ url: ... }) to send DTMF
+app.post("/twiml/dtmf", (req, res) => {
+  const { sessionId, confName, digits } = req.query;
+  console.log("[media-service] DTMF TwiML requested", { sessionId, confName, digits });
+  
+  if (!sessionId || !confName || !digits) {
+    console.warn("[media-service] Missing parameters in dtmf request");
+    return res.status(400).send("Missing sessionId, confName, or digits");
+  }
+  
+  const xml = buildDtmfTwiml({
+    publicBaseUrl: config.publicBaseUrl,
+    mediaWsPath: config.mediaWsPath,
+    sessionId,
+    confName,
+    digits
+  });
+  
+  console.log("[media-service] Returning DTMF TwiML:", xml);
   res.type("text/xml").send(xml);
 });
 
@@ -412,6 +456,92 @@ app.post("/ivr/next-digits", (req, res) => {
   res.json({ ok: true });
 });
 
+// Status callback for call events (helps debug DTMF and redirect issues)
+app.post("/status/call", (req, res) => {
+  const { CallSid, CallStatus, CallDuration, Direction, From, To, Timestamp } = req.body;
+  console.log(`[status/call] CallSid=${CallSid}, Status=${CallStatus}, Duration=${CallDuration}, Direction=${Direction}`);
+  console.log(`[status/call] Full body:`, JSON.stringify(req.body, null, 2));
+  res.sendStatus(200);
+});
+
+// Status callback for conference events
+app.post("/status/conference", (req, res) => {
+  const {
+    ConferenceSid,
+    FriendlyName,
+    StatusCallbackEvent,
+    CallSid,
+    ReasonParticipantLeft,
+    ReasonConferenceEnded,
+    Reason
+  } = req.body;
+  console.log(`[status/conference] Event=${StatusCallbackEvent}, Conference=${FriendlyName}, CallSid=${CallSid}`);
+  console.log(`[status/conference] Full body:`, JSON.stringify(req.body, null, 2));
+  
+  const match = FriendlyName?.match(/^conf_(sess_.+)$/);
+  const sessionIdFromName = match ? match[1] : null;
+  const sessionFromCallSid = CallSid ? getSessionByCallSid(CallSid) : null;
+  const sessionFromName = sessionIdFromName ? getSessionBySessionId(sessionIdFromName) : null;
+  const session = sessionFromCallSid || sessionFromName;
+
+  if (StatusCallbackEvent === "participant-join" && session?._conferenceEndTimeout) {
+    clearTimeout(session._conferenceEndTimeout);
+    session._conferenceEndTimeout = null;
+    console.log(`[status/conference] Cleared pending conference-end cleanup for ${session.sessionId}`);
+  }
+
+  // Clean up session when participant hangs up or conference ends
+  if (StatusCallbackEvent === 'participant-leave' && ReasonParticipantLeft === 'participant_hung_up') {
+    if (session) {
+      console.log(`[status/conference] Participant hung up, cleaning up session ${session.sessionId}`);
+      ivrController.cleanupSession(session.sessionId);
+      deleteSessionBySessionId(session.sessionId);
+    }
+  } else if (StatusCallbackEvent === 'conference-end') {
+    const sessionId = sessionIdFromName;
+    if (sessionId && session) {
+      const now = Date.now();
+      const reason = ReasonConferenceEnded || Reason || "";
+      const recentlyDtmf = session.lastDtmfAt && now - session.lastDtmfAt < CONFERENCE_END_GRACE_MS;
+      const shouldDelay = recentlyDtmf || reason === "last-participant-left";
+
+      if (session._conferenceEndTimeout) {
+        clearTimeout(session._conferenceEndTimeout);
+      }
+
+      const cleanup = () => {
+        const current = getSessionBySessionId(sessionId);
+        if (!current) return;
+
+        const nowCheck = Date.now();
+        const hasRecentMedia =
+          (current.lastMediaStartAt && nowCheck - current.lastMediaStartAt < CONFERENCE_END_GRACE_MS) ||
+          (current.lastAudioAt && nowCheck - current.lastAudioAt < CONFERENCE_END_GRACE_MS);
+        const hasActiveStream =
+          current.streamSid && getSession(current.streamSid) === current;
+
+        if (hasActiveStream || hasRecentMedia) {
+          console.log(`[status/conference] Conference end ignored; session still active ${sessionId}`);
+          return;
+        }
+
+        console.log(`[status/conference] Conference ended, cleaning up session ${sessionId}`);
+        ivrController.cleanupSession(sessionId);
+        deleteSessionBySessionId(sessionId);
+      };
+
+      if (shouldDelay) {
+        console.log(`[status/conference] Delaying conference-end cleanup for ${sessionId} (${CONFERENCE_END_GRACE_MS}ms, reason=${reason || 'unknown'})`);
+        session._conferenceEndTimeout = setTimeout(cleanup, CONFERENCE_END_GRACE_MS);
+      } else {
+        cleanup();
+      }
+    }
+  }
+  
+  res.sendStatus(200);
+});
+
 app.get(config.eventsPath, (req, res) => {
   res.set({
     "Content-Type": "text/event-stream",
@@ -435,6 +565,11 @@ const wss = new WebSocketServer({ server, path: config.mediaWsPath });
 
 wss.on("connection", (socket) => {
   console.log("[media-service] Media WS connected");
+  socket.on("close", () => {
+    if (socket._streamSid) {
+      streamSockets.delete(socket._streamSid);
+    }
+  });
   socket.on("message", (data) => {
     let message;
     try {
@@ -450,6 +585,9 @@ wss.on("connection", (socket) => {
       const customParams = message.start.customParameters || {};
       const sessionId = customParams.session_id;
       
+      streamSockets.set(streamSid, socket);
+      socket._streamSid = streamSid;
+      
       console.log("[media-service] Media stream parameters", {
         streamSid,
         callSid,
@@ -460,6 +598,7 @@ wss.on("connection", (socket) => {
       // Try to get existing session or create new one
       let session = sessionId ? getSessionBySessionId(sessionId) : null;
       if (session) {
+        const oldStreamSid = session.streamSid;
         // Update existing session with streamSid
         console.log("[media-service] Found existing session", {
           sessionId: session.sessionId,
@@ -472,6 +611,11 @@ wss.on("connection", (socket) => {
           streamSid,
           state: 'IN_CALL'
         });
+        session.lastMediaStartAt = Date.now();
+        if (session._conferenceEndTimeout) {
+          clearTimeout(session._conferenceEndTimeout);
+          session._conferenceEndTimeout = null;
+        }
         ivrController.initSession(session);
         
         console.log("[media-service] ✓ Updated existing session", { 
@@ -480,10 +624,19 @@ wss.on("connection", (socket) => {
           confName: session.confName,
           state: session.state
         });
+
+        if (oldStreamSid && oldStreamSid !== streamSid) {
+          const oldSocket = streamSockets.get(oldStreamSid);
+          if (oldSocket && oldSocket.readyState === 1) {
+            console.log(`[media-service] Closing old media stream socket ${oldStreamSid} (replaced by ${streamSid})`);
+            oldSocket.close(1000, "replaced by new stream");
+          }
+        }
       } else {
         // Create new session (fallback for legacy flow)
         console.log("[media-service] Creating new session (legacy fallback)");
         session = createSession({ streamSid, callSid });
+        session.lastMediaStartAt = Date.now();
         ivrController.initSession(session);
       }
       if (config.usePythonVad && audioAiClient) {
@@ -638,7 +791,16 @@ wss.on("connection", (socket) => {
       const streamSid = message.streamSid;
       const session = getSession(streamSid);
       if (!session) {
-        console.warn(`[media-service] Received media but no session found for streamSid: ${streamSid}`);
+        // Throttle this warning to avoid log spam (only log every 100th occurrence per streamSid)
+        if (!global._noSessionWarnCount) global._noSessionWarnCount = {};
+        global._noSessionWarnCount[streamSid] = (global._noSessionWarnCount[streamSid] || 0) + 1;
+        if (global._noSessionWarnCount[streamSid] === 1 || global._noSessionWarnCount[streamSid] % 100 === 0) {
+          console.warn(`[media-service] No session for streamSid: ${streamSid} (count: ${global._noSessionWarnCount[streamSid]})`);
+        }
+        return;
+      }
+      if (session.streamSid && session.streamSid !== streamSid) {
+        // Ignore media from a previous stream after a DTMF rejoin
         return;
       }
       session.lastAudioAt = Date.now();
@@ -830,8 +992,10 @@ wss.on("connection", (socket) => {
       const session = getSession(streamSid);
       if (session?.grpcStream) {
         session.grpcStream.end();
+        session.grpcStream = null;
       } else if (session?.vadMock) {
         session.vadMock.stop();
+        session.vadMock = null;
       }
       emitTwilio({
         callSid: session?.callSid,
@@ -840,10 +1004,10 @@ wss.on("connection", (socket) => {
         data: message.stop,
         ts: session ? Date.now() - session.callStartAt : 0
       });
-      if (session?.sessionId) {
-        ivrController.cleanupSession(session.sessionId);
-      }
-      deleteSession(streamSid);
+      // Only detach streamSid, keep session for potential reconnection (DTMF scenario)
+      // Session will be fully cleaned up when call ends (via hangup or conference-end)
+      detachStreamSid(streamSid);
+      console.log(`[media-service] Detached streamSid ${streamSid}, session ${session?.sessionId} preserved for potential reconnection`);
     }
   });
 });
