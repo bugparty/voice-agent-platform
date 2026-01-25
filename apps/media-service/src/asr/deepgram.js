@@ -14,7 +14,7 @@ const sessionConnections = new Map();
  * @returns {Promise<object>} 返回连接对象
  */
 async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) {
-  const { onPartial, onFinal, onError, onMetadata } = callbacks;
+  const { onPartial, onFinal, onError, onMetadata, onClose } = callbacks;
 
   // 如果已存在连接，先关闭
   if (sessionConnections.has(sessionId)) {
@@ -95,9 +95,22 @@ async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) 
       }
     });
 
-    connection.on(LiveTranscriptionEvents.Close, () => {
-      console.log(`[Deepgram] Connection closed for session ${sessionId}`);
-      sessionConnections.delete(sessionId);
+    connection.on(LiveTranscriptionEvents.Close, (closeEvent) => {
+      const code = closeEvent?.code || closeEvent;
+      const reason = closeEvent?.reason || "";
+      console.log(`[Deepgram] Connection closed for session ${sessionId}, code=${code}, reason=${reason || "none"}`);
+      
+      // Only delete from Map if this connection is still the active one for this session
+      // This prevents race conditions where old connection's Close event deletes new connection
+      const currentConnection = sessionConnections.get(sessionId);
+      if (currentConnection === connection) {
+        sessionConnections.delete(sessionId);
+        if (onClose) {
+          onClose({ sessionId, code, reason });
+        }
+      } else {
+        console.log(`[Deepgram] Ignoring Close event for replaced connection ${sessionId}`);
+      }
     });
 
     // 保存连接
@@ -115,10 +128,16 @@ async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) 
  * @param {string} sessionId - 会话ID
  * @param {Buffer} audioBuffer - 音频数据 (μ-law)
  */
+const noConnectionWarnAt = new Map();
 function sendAudio(sessionId, audioBuffer) {
   const connection = sessionConnections.get(sessionId);
   if (!connection) {
-    console.warn(`[Deepgram] No connection found for session ${sessionId}`);
+    const now = Date.now();
+    const lastWarn = noConnectionWarnAt.get(sessionId) || 0;
+    if (now - lastWarn > 5000) {
+      console.warn(`[Deepgram] No connection found for session ${sessionId}`);
+      noConnectionWarnAt.set(sessionId, now);
+    }
     return false;
   }
 

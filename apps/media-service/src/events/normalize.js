@@ -96,6 +96,19 @@ function ivrEvent({ ts, sessionId, state, detail }) {
   });
 }
 
+function agentMessageEvent({ ts, sessionId, text, kind = "message" }) {
+  return buildEvent({
+    category: "AGENT",
+    payload: {
+      sessionId,
+      event: "agent.message",
+      text,
+      kind
+    },
+    ts
+  });
+}
+
 module.exports = {
   buildEvent,
   twilioEvent,
@@ -103,5 +116,6 @@ module.exports = {
   conferenceEvent,
   asrEvent,
   dtmfEvent,
-  ivrEvent
+  ivrEvent,
+  agentMessageEvent
 };
