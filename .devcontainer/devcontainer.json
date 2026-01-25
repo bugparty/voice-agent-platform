@@ -11,9 +11,9 @@
       "pnpmVersion": "8"
     }
   },
-  "forwardPorts": [3000, 4001, 50051],
+  "forwardPorts": [3005, 4001, 50051],
   "portsAttributes": {
-    "3000": { "label": "Web (Next.js)", "onAutoForward": "notify" },
+    "3005": { "label": "Web (Next.js)", "onAutoForward": "notify" },
     "4001": { "label": "Media Service", "onAutoForward": "silent" },
     "50051": { "label": "AI Audio gRPC", "onAutoForward": "silent" }
   },
