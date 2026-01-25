@@ -17,9 +17,17 @@ async function hangupCall({ client, callSid }) {
 }
 
 async function sendDtmf({ client, callSid, digits }) {
-  return client.calls(callSid).update({
-    twiml: `<Response><Play digits="${digits}"/></Response>`
-  });
+  console.log(`[callControl] sendDtmf: callSid=${callSid}, digits=${digits}`);
+  try {
+    const result = await client.calls(callSid).update({
+      twiml: `<Response><Play digits="${digits}"/></Response>`
+    });
+    console.log(`[callControl] sendDtmf success: status=${result.status}`);
+    return result;
+  } catch (error) {
+    console.error(`[callControl] sendDtmf failed: ${error.message}`, error.code || '');
+    throw error;
+  }
 }
 
 module.exports = {

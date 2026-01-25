@@ -53,11 +53,11 @@ const audioAiClient = config.usePythonVad
     })
   : null;
 
-if (config.usePythonVad) {
-  console.log(`[media-service] Python VAD enabled, gRPC client: ${audioAiClient ? 'created' : 'FAILED'}, address: ${config.aiAudioGrpcUrl}`);
-} else {
-  console.log("[media-service] Python VAD disabled, using mock VAD");
-}
+// if (config.usePythonVad) {
+//   console.log(`[media-service] Python VAD enabled, gRPC client: ${audioAiClient ? 'created' : 'FAILED'}, address: ${config.aiAudioGrpcUrl}`);
+// } else {
+//   console.log("[media-service] Python VAD disabled, using mock VAD");
+// }
 
 function emitTwilio({ callSid, streamSid, event, data, ts }) {
   emitUiEvent(twilioEvent({ callSid, streamSid, event, data, ts }));
@@ -116,29 +116,37 @@ function canSendDtmf(session) {
 }
 
 async function sendDtmfWithPolicy(session, digits, source) {
+  console.log(`[media-service] sendDtmfWithPolicy: digits=${digits}, source=${source}, callSid=${session?.callSid}, phase=${session?.phase}`);
+  
   if (!session?.callSid) {
     const reason = "missing_call_sid";
+    console.log(`[media-service] sendDtmfWithPolicy blocked: ${reason}`);
     emitDtmfEvent(session, { digits, status: "blocked", reason });
     throw new Error(reason);
   }
   if (!canSendDtmf(session)) {
     const reason = "policy";
+    console.log(`[media-service] sendDtmfWithPolicy blocked: ${reason} (phase=${session.phase}, expected=IVR)`);
     emitDtmfEvent(session, { digits, status: "blocked", reason });
     throw new Error(reason);
   }
   const now = Date.now();
   if (now - (session.lastDtmfAt || 0) < DTMF_COOLDOWN_MS) {
     const reason = "rate_limit";
+    console.log(`[media-service] sendDtmfWithPolicy blocked: ${reason}`);
     emitDtmfEvent(session, { digits, status: "blocked", reason });
     throw new Error(reason);
   }
 
   try {
+    console.log(`[media-service] sendDtmfWithPolicy calling Twilio...`);
     await sendDtmf({ client: twilioClient, callSid: session.callSid, digits });
     session.lastDtmfAt = now;
+    console.log(`[media-service] sendDtmfWithPolicy success`);
     emitDtmfEvent(session, { digits, status: "sent", reason: source });
     return true;
   } catch (error) {
+    console.log(`[media-service] sendDtmfWithPolicy failed: ${error?.message}`);
     emitDtmfEvent(session, {
       digits,
       status: "failed",
@@ -350,8 +358,11 @@ app.post("/call/hangup", async (req, res) => {
 app.post("/call/dtmf", async (req, res) => {
   try {
     const { sessionId, callSid, digits } = req.body || {};
+    console.log(`[media-service] /call/dtmf request: sessionId=${sessionId}, callSid=${callSid}, digits=${digits}`);
+    
     const validationError = validateDigits(digits);
     if (validationError) {
+      console.log(`[media-service] /call/dtmf validation failed: ${validationError}`);
       return res.status(400).json({ ok: false, error: `invalid_digits:${validationError}` });
     }
 
@@ -360,13 +371,18 @@ app.post("/call/dtmf", async (req, res) => {
       (callSid ? getSessionByCallSid(callSid) : null);
 
     if (!session) {
+      console.log(`[media-service] /call/dtmf session not found: sessionId=${sessionId}, callSid=${callSid}`);
       return res.status(404).json({ ok: false, error: "session_not_found" });
     }
+    
+    console.log(`[media-service] /call/dtmf found session: phase=${session.phase}, callSid=${session.callSid}, state=${session.state}`);
 
     await sendDtmfWithPolicy(session, digits, "manual");
+    console.log(`[media-service] /call/dtmf success: digits=${digits}`);
     res.json({ ok: true });
   } catch (error) {
     const reason = error?.message || "send_failed";
+    console.log(`[media-service] /call/dtmf error: ${reason}`);
     const status =
       reason === "policy"
         ? 403
@@ -509,9 +525,9 @@ wss.on("connection", (socket) => {
             }
             session._vadEventCount++;
             
-            if (musicProb > 0.1 || session._vadEventCount <= 10) {
-              console.log(`[media-service] VAD event #${session._vadEventCount}: action=${action}, prob=${event.prob}, music_prob=${musicProb}, has_music_prob=${event.music_prob !== undefined}, has_musicProb=${event.musicProb !== undefined}, all_fields=${Object.keys(event).join(',')}, event_obj=${JSON.stringify(event)}`);
-            }
+            // if (musicProb > 0.1 || session._vadEventCount <= 10) {
+            //   console.log(`[media-service] VAD event #${session._vadEventCount}: action=${action}, prob=${event.prob}, music_prob=${musicProb}, has_music_prob=${event.music_prob !== undefined}, has_musicProb=${event.musicProb !== undefined}, all_fields=${Object.keys(event).join(',')}, event_obj=${JSON.stringify(event)}`);
+            // }
             
             emitVad({
               session,
@@ -768,17 +784,17 @@ wss.on("connection", (socket) => {
           session.trackStats[twilioTrack] = (session.trackStats[twilioTrack] || 0) + 1;
           
           // Log track distribution only every 1000 chunks (reduced frequency)
-          if (session.seq % 1000 === 0) {
-            console.log(`[media-service] Track stats: ${JSON.stringify(session.trackStats)}`);
-          }
+          // if (session.seq % 1000 === 0) {
+          //   console.log(`[media-service] Track stats: ${JSON.stringify(session.trackStats)}`);
+          // }
           
           // Only process "inbound" track (remote speaker) for VAD
           // "outbound" track would be our own mic, which we don't need to analyze
           if (twilioTrack !== "inbound") {
             // Skip outbound audio (our own mic)
-            if (session.seq <= 10) {
-              console.log(`[media-service] Skipping ${twilioTrack} track (we only process inbound)`);
-            }
+            // if (session.seq <= 10) {
+            //   console.log(`[media-service] Skipping ${twilioTrack} track (we only process inbound)`);
+            // }
             return;
           }
           
