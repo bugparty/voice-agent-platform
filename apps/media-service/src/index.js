@@ -7,7 +7,7 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 const { getConfig } = require("./config/env");
 const { emitUiEvent, onUiEvent } = require("./events/bus");
-const { twilioEvent, vadEvent } = require("./events/normalize");
+const { twilioEvent, vadEvent, asrEvent } = require("./events/normalize");
 const { buildTwiml, buildOutboundConferenceTwiml, buildWebJoinConferenceTwiml } = require("./twilio/twiml");
 const { createTwilioClient, startCall, hangupCall } = require("./twilio/callControl");
 const { 
@@ -24,6 +24,8 @@ const AccessToken = require("twilio").jwt.AccessToken;
 const VoiceGrant = AccessToken.VoiceGrant;
 const { createVadMock } = require("./mock/vadMock");
 const { createAudioAiClient } = require("./grpc/client");
+const deepgramClient = require("./asr/deepgram");
+const agentServer = require("./grpc/agentServer");
 
 const config = getConfig();
 const app = express();
@@ -51,6 +53,43 @@ if (config.usePythonVad) {
   console.log(`[media-service] Python VAD enabled, gRPC client: ${audioAiClient ? 'created' : 'FAILED'}, address: ${config.aiAudioGrpcUrl}`);
 } else {
   console.log("[media-service] Python VAD disabled, using mock VAD");
+}
+
+// Initialize Agent gRPC server
+if (config.agentGrpcPort) {
+  try {
+    const agentProtoPath = config.agentProtoPath || 
+      path.join(__dirname, "../../../packages/proto/agent.proto");
+    
+    agentServer.startAgentServer(
+      config.agentGrpcPort, 
+      agentProtoPath,
+      (suggestionData) => {
+        // Handle agent suggestions
+        const { sessionId, suggestion } = suggestionData;
+        console.log(`[media-service] Received agent suggestion for session ${sessionId}:`, {
+          suggestionId: suggestion.suggestion_id,
+          plan: suggestion.plan,
+          actions: suggestion.actions?.length || 0
+        });
+        
+        // TODO: Implement suggestion execution logic
+        // For now, just log it
+      }
+    );
+    console.log(`[media-service] Agent gRPC server starting on port ${config.agentGrpcPort}`);
+  } catch (error) {
+    console.error("[media-service] Failed to start Agent gRPC server:", error);
+  }
+}
+
+// Log Deepgram ASR status
+if (config.asrEnabled && config.deepgramApiKey) {
+  console.log(`[media-service] Deepgram ASR enabled, language: ${config.asrLanguage}, model: ${config.asrModel}`);
+} else if (config.asrEnabled && !config.deepgramApiKey) {
+  console.warn("[media-service] ASR enabled but DEEPGRAM_API_KEY not set");
+} else {
+  console.log("[media-service] Deepgram ASR disabled");
 }
 
 function emitTwilio({ callSid, streamSid, event, data, ts }) {
@@ -335,6 +374,73 @@ wss.on("connection", (socket) => {
         console.log("[media-service] Creating new session (legacy fallback)");
         session = createSession({ streamSid, callSid });
       }
+      // Initialize Deepgram ASR if enabled
+      if (config.asrEnabled && config.deepgramApiKey) {
+        console.log(`[media-service] Creating Deepgram connection for session ${sessionId || streamSid}`);
+        
+        deepgramClient.createConnection(
+          sessionId || streamSid,
+          config.deepgramApiKey,
+          {
+            language: config.asrLanguage,
+            model: config.asrModel,
+          },
+          {
+            onPartial: (eventData) => {
+              const ts = Date.now() - session.callStartAt;
+              emitUiEvent(asrEvent({
+                ts,
+                sessionId: eventData.sessionId,
+                text: eventData.text,
+                confidence: eventData.confidence,
+                isFinal: false,
+                track: "remote"
+              }));
+              
+              // Push to Agent if subscribed
+              agentServer.pushEvent(eventData.sessionId, {
+                type: "asr.remote.partial",
+                timestamp: Date.now(),
+                payload: {
+                  text: eventData.text,
+                  confidence: eventData.confidence,
+                  isFinal: false,
+                  track: "remote"
+                }
+              });
+            },
+            onFinal: (eventData) => {
+              const ts = Date.now() - session.callStartAt;
+              emitUiEvent(asrEvent({
+                ts,
+                sessionId: eventData.sessionId,
+                text: eventData.text,
+                confidence: eventData.confidence,
+                isFinal: true,
+                track: "remote"
+              }));
+              
+              // Push to Agent if subscribed
+              agentServer.pushEvent(eventData.sessionId, {
+                type: "asr.remote.final",
+                timestamp: Date.now(),
+                payload: {
+                  text: eventData.text,
+                  confidence: eventData.confidence,
+                  isFinal: true,
+                  track: "remote"
+                }
+              });
+            },
+            onError: (errorData) => {
+              console.error(`[media-service] Deepgram error for session ${errorData.sessionId}:`, errorData.error);
+            }
+          }
+        ).catch((error) => {
+          console.error(`[media-service] Failed to create Deepgram connection:`, error);
+        });
+      }
+      
       if (config.usePythonVad && audioAiClient) {
         // Initialize reconnect state for this session
         if (!session.grpcReconnectState) {
@@ -670,6 +776,13 @@ wss.on("connection", (socket) => {
         }
         session.vadMock?.onAudioFrame();
       }
+      
+      // Send audio to Deepgram ASR if enabled
+      if (config.asrEnabled && config.deepgramApiKey) {
+        const sessionId = session.sessionId || streamSid;
+        const payload = Buffer.from(message.media.payload, "base64");
+        deepgramClient.sendAudio(sessionId, payload);
+      }
       return;
     }
 
@@ -677,6 +790,13 @@ wss.on("connection", (socket) => {
       console.log("[media-service] Media stream stopped", message.streamSid);
       const streamSid = message.streamSid;
       const session = getSession(streamSid);
+      
+      // Close Deepgram connection if active
+      if (config.asrEnabled && config.deepgramApiKey) {
+        const sessionId = session?.sessionId || streamSid;
+        deepgramClient.closeConnection(sessionId);
+      }
+      
       if (session?.grpcStream) {
         session.grpcStream.end();
       } else if (session?.vadMock) {

@@ -56,9 +56,25 @@ function conferenceEvent({ ts, sessionId, confName, event, data }) {
   });
 }
 
+function asrEvent({ ts, sessionId, text, confidence, isFinal, track = "remote" }) {
+  return buildEvent({
+    category: "ASR",
+    payload: {
+      sessionId,
+      event: isFinal ? `asr.${track}.final` : `asr.${track}.partial`,
+      text,
+      confidence,
+      isFinal,
+      track
+    },
+    ts
+  });
+}
+
 module.exports = {
   buildEvent,
   twilioEvent,
   vadEvent,
-  conferenceEvent
+  conferenceEvent,
+  asrEvent
 };
