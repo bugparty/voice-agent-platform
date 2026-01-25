@@ -1,0 +1,19 @@
+{
+  "name": "mock-agent",
+  "version": "1.0.0",
+  "description": "Mock IVR navigation agent using LLM",
+  "type": "module",
+  "main": "run.js",
+  "scripts": {
+    "start": "node run.js",
+    "dev": "node run.js",
+    "simulate": "node visual-simulator.js",
+    "call": "node visual-simulator.js"
+  },
+  "dependencies": {
+    "openai": "^4.77.3",
+    "dotenv": "^16.4.7",
+    "chalk": "^5.3.0"
+  }
+}
+
