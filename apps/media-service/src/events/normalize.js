@@ -36,9 +36,9 @@ function vadEvent({ ts, source, action, prob, musicProb }) {
   });
   
   // Debug: log music events (reduced frequency)
-  if ((musicProb ?? 0) > 0.3) {
-    console.log(`[normalize] VAD event with music: musicProb=${musicProb}`);
-  }
+  // if ((musicProb ?? 0) > 0.3) {
+  //   console.log(`[normalize] VAD event with music: musicProb=${musicProb}`);
+  // }
   
   return event;
 }

@@ -332,7 +332,7 @@ export default {
 				const welcomeMessage = env.WELCOME_MESSAGE || 'Welcome to Side Effect Emporium.While you’re here, may we interest you in our long-term storage solutions?You’ll still be able to see the grass.';
 
 				return twiml((vr) => {
-					vr.play(rickRollUrl)
+					//vr.play(rickRollUrl)
 					vr.say({ voice: 'alice' }, welcomeMessage);
 					vr.redirect({ method: 'POST' }, redirectUrl);
 				});
