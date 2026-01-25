@@ -53,6 +53,7 @@ async function getSession(callSid, env) {
 			identityCollected: false, // true once user chose a method at L4
 			identityVerified: false, // becomes true once L5 reached
 			retryCount: 0, // counts invalid entries (global-ish)
+			l1Failures: 0, // counts invalid entries at L1 main menu
 			l4Failures: 0,
 			createdAt: Date.now(),
 			lastSeenAt: Date.now(),
@@ -320,6 +321,7 @@ export default {
 				s.identityCollected = false;
 				s.identityVerified = false;
 				s.retryCount = 0;
+				s.l1Failures = 0;
 				s.l4Failures = 0;
 
 				await saveSession(s, env);
@@ -367,7 +369,17 @@ export default {
 
 			if (d !== '1' && d !== '2' && d !== '3') {
 				s.retryCount++;
+				s.l1Failures++;
 				await saveSession(s, env);
+
+				// Hang up after 3 invalid attempts at L1 to save costs
+				if (s.l1Failures >= 3 || s.retryCount >= 3) {
+					console.log('[IVR] L1 max retries exceeded, hanging up:', { callSid, l1Failures: s.l1Failures });
+					return twiml((vr) => {
+						vr.say({ voice: 'alice' }, 'We were unable to understand your selection. Please try again later. Goodbye.');
+						vr.hangup();
+					});
+				}
 			}
 
 			return twiml((vr) => {
@@ -808,10 +820,10 @@ export default {
 			if (!s) return new Response('Missing CallSid', { status: 400 });
 
 			// Simulate occasional rejection to feel real.
-			const tooShort = digits.length < 4;
+			const tooShort = digits.length < 2;
 			const pseudoFail = Math.random() < 0.25; // 25% chance of "system can't verify"
 
-			if (tooShort || pseudoFail) {
+			if (tooShort ) {
 				s.retryCount++;
 				s.l4Failures++;
 				await saveSession(s, env);

@@ -27,6 +27,14 @@ type CallState = {
   musicProb: number;
 };
 
+type TranscriptItem = {
+  id: string;
+  timestamp: number;
+  text: string;
+  confidence: number;
+  isFinal: boolean;
+};
+
 type UserState = {
   deviceStatus: DeviceStatus;
   micPermission: PermissionState;
@@ -51,6 +59,8 @@ export default function Page() {
   const [callState, setCallState] = useState<CallState>(DEFAULT_CALL_STATE);
   const [userState, setUserState] = useState<UserState>(DEFAULT_USER_STATE);
   const [error, setError] = useState<string | null>(null);
+  const [transcripts, setTranscripts] = useState<TranscriptItem[]>([]);
+  const [partialTranscript, setPartialTranscript] = useState<string>("");
   
   const baseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_MEDIA_SERVICE_URL || "http://localhost:4001",
@@ -76,6 +86,9 @@ export default function Page() {
           // Cleanup device on hangup
           destroyDevice();
           setUserState(DEFAULT_USER_STATE);
+          // Clear transcripts
+          setTranscripts([]);
+          setPartialTranscript("");
         }
       }
       if (event.category === "VAD") {
@@ -88,6 +101,26 @@ export default function Page() {
         } else if (action?.endsWith(".update")) {
           const prob = Number(event.payload?.prob ?? 0);
           setCallState((prev) => ({ ...prev, vadProb: prob, musicProb }));
+        }
+      }
+      if (event.category === "ASR") {
+        const text = event.payload?.text as string;
+        const confidence = Number(event.payload?.confidence ?? 0);
+        const isFinal = Boolean(event.payload?.isFinal);
+        
+        if (isFinal) {
+          // Add final transcript to history
+          setTranscripts((prev) => [{
+            id: event.id,
+            timestamp: event.ts,
+            text,
+            confidence,
+            isFinal: true,
+          }, ...prev].slice(0, 50)); // Keep last 50 transcripts
+          setPartialTranscript(""); // Clear partial
+        } else {
+          // Update partial transcript
+          setPartialTranscript(text);
         }
       }
     });
@@ -300,7 +333,7 @@ export default function Page() {
 
       <div className="content">
         <div className="panel">
-          <h3>Call Controls</h3>
+          <h3>Call + User Controls</h3>
           <p>Fixed target number is configured in the media-service.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={handleStartCall} disabled={callState.callStatus !== "DISCONNECTED"}>
@@ -314,13 +347,6 @@ export default function Page() {
               Hangup
             </button>
           </div>
-
-          <h3 style={{ marginTop: "20px" }}>Menu Selection Keypad</h3>
-          <p>Press digits to select menu options during the call.</p>
-          <Keypad 
-            onKeyPress={handleKeypadPress} 
-            disabled={callState.callStatus !== "IN_CALL"}
-          />
 
           <h3 style={{ marginTop: "20px" }}>User Controls</h3>
           <p>Join the conference to speak with the callee.</p>
@@ -354,6 +380,79 @@ export default function Page() {
             </div>
           )}
         </div>
+        <div className="panel">
+          <h3>Menu Selection Keypad</h3>
+          <p>Press digits to select menu options during the call.</p>
+          <Keypad 
+            onKeyPress={handleKeypadPress} 
+            disabled={callState.callStatus !== "IN_CALL"}
+          />
+        </div>
+        <div className="panel">
+          <h3>Transcripts</h3>
+          {callState.callStatus !== "IN_CALL" ? (
+            <p style={{ color: "#374151", fontSize: "14px" }}>
+              Real-time transcripts will appear here during the call.
+            </p>
+          ) : (
+            <div style={{ marginBottom: "12px" }}>
+              {partialTranscript && (
+                <div style={{ 
+                  padding: "12px 16px", 
+                  background: "rgba(14, 165, 233, 0.15)", 
+                  borderLeft: "3px solid #0ea5e9",
+                  borderRadius: "12px",
+                  marginBottom: "8px",
+                  fontSize: "14px",
+                  fontStyle: "italic",
+                  color: "#94a3b8",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 0 12px rgba(14, 165, 233, 0.2)"
+                }}>
+                  {partialTranscript}
+                </div>
+              )}
+              <div style={{ 
+                maxHeight: "600px", 
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+              }}>
+                {transcripts.length === 0 && !partialTranscript && (
+                  <p style={{ color: "#374151", fontSize: "13px" }}>
+                    Listening for speech...
+                  </p>
+                )}
+                {transcripts.map((transcript) => (
+                  <div 
+                    key={transcript.id}
+                    style={{ 
+                      padding: "12px 16px", 
+                      background: "rgba(30, 41, 59, 0.8)",
+                      border: "1px solid rgba(148, 163, 184, 0.3)",
+                      borderRadius: "12px",
+                      fontSize: "14px",
+                      color: "#e2e8f0",
+                      backdropFilter: "blur(8px)",
+                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)"
+                    }}
+                  >
+                    <div style={{ marginBottom: "4px" }}>
+                      {transcript.text}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                      Confidence: {(transcript.confidence * 100).toFixed(0)}% · 
+                      {new Date(transcript.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="content single">
         <div className="panel">
           <h3>Timeline</h3>
           <div className="timeline">
