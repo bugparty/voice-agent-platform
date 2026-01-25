@@ -1,0 +1,120 @@
+{
+	"entry": "main_menu",
+	"menus": {
+	  "main_menu": {
+		"prompt": "Welcome to XXX Pharmacy. Please choose from the following options.",
+		"options": {
+		  "1": { "label": "Store information", "next": "store_menu" },
+		  "2": { "label": "Prescription services", "next": "rx_menu" },
+		  "3": { "label": "Insurance and billing", "next": "insurance_menu" },
+		  "9": { "label": "Repeat this menu", "next": "main_menu" }
+		}
+	  },
+
+	  "store_menu": {
+		"prompt": "Store information menu.",
+		"options": {
+		  "1": { "label": "Store hours", "next": "hours_menu" },
+		  "2": { "label": "Store location", "next": "location_menu" },
+		  "3": { "label": "Holiday schedule", "next": "dead_end_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "hours_menu": {
+		"prompt": "Our store hours are 9am to 9pm daily.",
+		"options": {
+		  "1": { "label": "Repeat hours", "next": "hours_menu" },
+		  "2": { "label": "Other store questions", "next": "store_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "location_menu": {
+		"prompt": "Our store is located at 123 Main Street.",
+		"options": {
+		  "1": { "label": "Get directions by text", "next": "dead_end_menu" },
+		  "2": { "label": "Other store questions", "next": "store_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_menu": {
+		"prompt": "Prescription services menu.",
+		"options": {
+		  "1": { "label": "Check prescription status", "next": "rx_status_menu" },
+		  "2": { "label": "Refill a prescription", "next": "rx_refill_menu" },
+		  "3": { "label": "Speak to pharmacy staff", "next": "staff_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_status_menu": {
+		"prompt": "Prescription status menu.",
+		"options": {
+		  "1": { "label": "Enter prescription number", "next": "dead_end_menu" },
+		  "2": { "label": "Prescription not found", "next": "dead_end_menu" },
+		  "3": { "label": "Other prescription questions", "next": "rx_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_refill_menu": {
+		"prompt": "Prescription refill menu.",
+		"options": {
+		  "1": { "label": "Refill by phone", "next": "dead_end_menu" },
+		  "2": { "label": "Refill online", "next": "dead_end_menu" },
+		  "3": { "label": "Problems with refill", "next": "staff_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "insurance_menu": {
+		"prompt": "Insurance and billing menu.",
+		"options": {
+		  "1": { "label": "Insurance accepted", "next": "dead_end_menu" },
+		  "2": { "label": "Billing questions", "next": "billing_menu" },
+		  "3": { "label": "Problems with insurance", "next": "staff_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "billing_menu": {
+		"prompt": "Billing questions menu.",
+		"options": {
+		  "1": { "label": "Copay information", "next": "dead_end_menu" },
+		  "2": { "label": "Incorrect charge", "next": "staff_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "staff_gate_menu": {
+		"prompt": "To better assist you, please choose one of the following options.",
+		"options": {
+		  "1": { "label": "General question", "next": "dead_end_menu" },
+		  "2": { "label": "Issue not resolved", "next": "confirmation_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "confirmation_menu": {
+		"prompt": "Are you sure you would like to speak with a pharmacy representative?",
+		"options": {
+		  "1": {
+			"label": "Yes, connect me to a representative",
+			"action": "TRANSFER_TO_HUMAN"
+		  },
+		  "2": { "label": "No, return to previous menu", "next": "staff_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "dead_end_menu": {
+		"prompt": "This information is available online.",
+		"options": {
+		  "1": { "label": "Return to previous menu", "next": "main_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  }
+	}
+  }

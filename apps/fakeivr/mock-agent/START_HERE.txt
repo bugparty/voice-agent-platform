@@ -1,139 +1,110 @@
 ╔══════════════════════════════════════════════════════════════════════╗
-║                    🎉 MOCK IVR AGENT READY! 🎉                       ║
+║          🎉 MOCK IVR AGENT - READY TO USE! 🎉                        ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
 ✅ Everything is installed and configured!
 ✅ DeepSeek API key is set up!
-✅ Mock data loaded from ivr-tree.json!
+✅ All 4 IVR scenarios ready!
+✅ NEW: Interactive scenario selection!
 
 ╔══════════════════════════════════════════════════════════════════════╗
-║                    🚀 QUICK START - 2 COMMANDS                       ║
+║                    🚀 QUICK START - 2 STEPS                          ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-1. See the Visual Phone Call Mock:
+1. Navigate to directory:
+   
+   cd /root/rose3/apps/fakeivr/mock-agent
+
+2. Run the simulator:
    
    npm run simulate
 
-   Shows:
-   📞 Dialing...
-   🔊 IVR prompts (what system "says")
-   🤖 Agent decisions (which option chosen)
-   ⌨️  Key presses (simulated button press)
-   👤 Human connection!
-   📊 Statistics
-
-2. Technical Report Mode:
+3. Select a scenario when prompted:
    
-   npm start
+   ══════════════════════════════════════════════════════════════════
+              SELECT IVR SCENARIO TO TEST
+   ══════════════════════════════════════════════════════════════════
+   
+   ✅ 1. Simple Scenario - Quick demo (5-6 steps)
+   🏗️ 2. Complex Scenario - Realistic (10-20 steps)
+   ❌ 3. Fault Scenario - Impossible (tests failure)
+   🔐 4. Hidden Scenario - Discovery challenge
+   
+   Enter your choice (1-4): █
 
-   Shows:
-   - Detailed logs
-   - Navigation statistics
-   - Final report
-
-╔══════════════════════════════════════════════════════════════════════╗
-║                    📚 DOCUMENTATION FILES                            ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-Start with these:
-  • FINAL_SUMMARY.md  - Complete overview of mock system ⭐
-  • HOW_TO_RUN.md     - How to run and what you'll see
-  • USAGE_EXAMPLES.md - Configuration examples
-
-For details:
-  • QUICKSTART.md     - 3-step setup guide
-  • README.md         - Complete documentation
-  • ARCHITECTURE.md   - Technical deep-dive
+4. Watch the magic happen! 🎉
 
 ╔══════════════════════════════════════════════════════════════════════╗
-║                    🎯 WHAT IS THIS?                                  ║
+║                    📋 WHAT EACH SCENARIO DOES                        ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-This is a MOCK system that simulates an AI agent navigating phone menus:
+Option 1: Simple Scenario ✅
+  • Best for: First-time demo, quick test
+  • Difficulty: Easy
+  • Result: Success in 30 seconds
 
-  Real Phone System          →    Your Mock System
-  ─────────────────────           ────────────────
-  User calls pharmacy        →    Load JSON data
-  Voice says "Press 1..."    →    Print IVR prompt
-  User presses buttons       →    LLM decides option
-  Navigate through menus     →    Navigate JSON tree
-  Eventually reach human     →    Find TRANSFER_TO_HUMAN
+Option 2: Complex Scenario 🏗️
+  • Best for: Realistic testing, impressive demo
+  • Difficulty: Hard
+  • Result: Success in 1-2 minutes
 
-Everything is TEXT-BASED in your terminal:
-  • No actual phone call
-  • No audio/speech
-  • Just printed text showing the process
-  • Perfect for testing and demonstration!
+Option 3: Fault Scenario ❌
+  • Best for: Testing error handling
+  • Difficulty: Impossible
+  • Result: Graceful failure (no human exists)
+
+Option 4: Hidden Scenario 🔐
+  • Best for: Testing discovery ability
+  • Difficulty: Medium-Hard
+  • Result: Success if finds secret option '0'
 
 ╔══════════════════════════════════════════════════════════════════════╗
-║                    🎮 TRY IT NOW!                                    ║
+║                    📚 DOCUMENTATION                                  ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-Run this command to see it in action:
+Quick guides:
+  • UPDATED_USAGE.md - How to use interactive mode ⭐
+  • HOW_TO_RUN.md - Complete usage guide
+  • SWITCH_SCENARIOS.md - Alternative methods
+  • TESTING_GUIDE.md - Test all scenarios
 
+Details:
+  • README.md - Full documentation
+  • ARCHITECTURE.md - Technical details
+  • data/README.md - Scenario documentation
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                    💡 EXAMPLE SESSION                                ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+$ npm run simulate
+
+Enter your choice (1-4): 1
+
+✅ Selected: Simple Scenario
+   Loading: data/ivr-simple.json
+
+📞 Dialing XXX Pharmacy...
+📞 Call connected!
+
+🔊 IVR SYSTEM:
+   "Welcome to XXX Pharmacy..."
+   
+🤖 AGENT DECISION:
+   Selected: Option 2
+   
+[... continues ...]
+
+✅ 👤 CONNECTED TO HUMAN REPRESENTATIVE! 👤 ✅
+🎉 SUCCESS!
+
+╔══════════════════════════════════════════════════════════════════════╗
+║                    🎮 READY TO TRY IT!                               ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+Just run:
+
+    cd /root/rose3/apps/fakeivr/mock-agent
     npm run simulate
 
-Watch as the agent:
-  1. "Calls" the pharmacy (loads JSON)
-  2. Reads IVR prompts (from mock data)
-  3. Decides which option to press (using LLM)
-  4. Navigates through 6 menu levels
-  5. Successfully connects to human!
-
-The whole journey takes about 30-40 seconds.
-
-╔══════════════════════════════════════════════════════════════════════╗
-║                    ⚙️ CONFIGURATION                                  ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-Your current config (.env):
-  • API: DeepSeek (OpenAI-compatible)
-  • Model: deepseek-chat
-  • Mistakes: DISABLED (perfect agent)
-
-To enable mistakes (more realistic):
-  Edit .env and set:
-    ALLOW_MISTAKES=true
-    MISTAKE_PROBABILITY=0.15
-
-╔══════════════════════════════════════════════════════════════════════╗
-║                    📊 FILES CREATED                                  ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-Source Code (6 files):
-  • run.js              - Technical report mode
-  • visual-simulator.js - Visual phone call mode ⭐
-  • agent.js            - Main orchestration
-  • navigator.js        - IVR tree traversal
-  • llm-client.js       - LLM API integration
-  • logger.js           - Pretty output
-
-Documentation (10 files):
-  • START_HERE.txt      - This file
-  • FINAL_SUMMARY.md    - Complete overview ⭐
-  • HOW_TO_RUN.md       - Usage guide ⭐
-  • USAGE_EXAMPLES.md   - Configuration examples
-  • INDEX.md            - Documentation index
-  • QUICKSTART.md       - 3-step setup
-  • README.md           - Full documentation
-  • ARCHITECTURE.md     - Technical details
-  • WORKFLOW.md         - Visual diagrams
-  • PROJECT_SUMMARY.md  - High-level overview
-
-Configuration:
-  • package.json        - Dependencies
-  • .env                - Your API key (configured!)
-  • env.example         - Template
-
-Testing:
-  • test-navigator.js   - Test without API calls
-
-╔══════════════════════════════════════════════════════════════════════╗
-║                    🎉 YOU'RE READY!                                  ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-Just run:    npm run simulate
-
-And watch the magic happen! 🚀✨
-
-For help: Read FINAL_SUMMARY.md or HOW_TO_RUN.md
+Then select a scenario and watch it work! 🚀✨

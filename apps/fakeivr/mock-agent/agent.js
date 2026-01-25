@@ -15,7 +15,7 @@ import { LLMClient } from './llm-client.js';
 
 export class IVRAgent {
   constructor(config) {
-    this.navigator = new IVRNavigator();
+    this.navigator = new IVRNavigator(config.ivrTreePath);
     this.llmClient = new LLMClient({
       provider: config.llmProvider || 'openai',
       modelName: config.modelName || 'gpt-4o-mini',

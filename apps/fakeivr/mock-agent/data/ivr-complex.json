@@ -1,0 +1,1954 @@
+{
+	"meta": {
+	  "company": "XXX Pharmacy",
+	  "version": "0.2-mock",
+	  "notes": [
+		"This is a mock IVR graph with many detours and gated escalation paths.",
+		"If human_transfer_available is false, agent should not expect TRANSFER_TO_HUMAN to exist."
+	  ]
+	},
+	"features": {
+	  "human_transfer_available": true
+	},
+	"entry": "welcome_menu",
+	"menus": {
+	  "welcome_menu": {
+		"prompt": "Welcome to XXX Pharmacy. For quality and training, your call may be monitored. Choose an option.",
+		"options": {
+		  "1": { "label": "Continue in English", "next": "main_menu" },
+		  "2": { "label": "Español", "next": "spanish_stub_menu" },
+		  "3": { "label": "Accessibility options", "next": "accessibility_menu" },
+		  "0": { "label": "Repeat this message", "next": "welcome_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "spanish_stub_menu": {
+		"prompt": "Esta es una demostración. Para continuar, regrese al menú principal.",
+		"options": {
+		  "1": { "label": "Return to English main menu", "next": "main_menu" },
+		  "0": { "label": "Repeat", "next": "spanish_stub_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "accessibility_menu": {
+		"prompt": "Accessibility menu.",
+		"options": {
+		  "1": { "label": "Speak slowly", "next": "accessibility_slow_menu" },
+		  "2": { "label": "Hearing assistance info", "next": "accessibility_hearing_menu" },
+		  "3": { "label": "Repeat options", "next": "accessibility_menu" },
+		  "0": { "label": "Repeat this message", "next": "accessibility_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "accessibility_slow_menu": {
+		"prompt": "Slow speech mode enabled (mock).",
+		"options": {
+		  "1": { "label": "Continue to main menu", "next": "main_menu" },
+		  "2": { "label": "Accessibility menu", "next": "accessibility_menu" },
+		  "0": { "label": "Repeat", "next": "accessibility_slow_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "accessibility_hearing_menu": {
+		"prompt": "Hearing assistance information is available online (mock).",
+		"options": {
+		  "1": { "label": "Return to accessibility menu", "next": "accessibility_menu" },
+		  "2": { "label": "Continue to main menu", "next": "main_menu" },
+		  "0": { "label": "Repeat", "next": "accessibility_hearing_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "main_menu": {
+		"prompt": "Main menu. Choose an option.",
+		"options": {
+		  "1": { "label": "Store information", "next": "store_menu" },
+		  "2": { "label": "Prescription services", "next": "rx_menu" },
+		  "3": { "label": "Insurance and billing", "next": "insurance_menu" },
+		  "4": { "label": "Delivery and pickup", "next": "delivery_menu" },
+		  "5": { "label": "Website and app support", "next": "app_support_menu" },
+		  "0": { "label": "Repeat main menu", "next": "main_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "store_menu": {
+		"prompt": "Store information menu.",
+		"options": {
+		  "1": { "label": "Store hours", "next": "store_hours_menu" },
+		  "2": { "label": "Store location", "next": "store_location_menu" },
+		  "3": { "label": "Holiday schedule", "next": "store_holiday_menu" },
+		  "4": { "label": "Photo center", "next": "photo_menu" },
+		  "5": { "label": "In-store clinic", "next": "clinic_menu" },
+		  "0": { "label": "Repeat store menu", "next": "store_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "store_hours_menu": {
+		"prompt": "Store hours: 9am to 9pm daily (mock).",
+		"options": {
+		  "1": { "label": "Pharmacy hours", "next": "pharmacy_hours_menu" },
+		  "2": { "label": "Store hours again", "next": "store_hours_menu" },
+		  "3": { "label": "Other store questions", "next": "store_menu" },
+		  "0": { "label": "Repeat", "next": "store_hours_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "pharmacy_hours_menu": {
+		"prompt": "Pharmacy hours: 10am to 7pm weekdays, 10am to 5pm weekends (mock).",
+		"options": {
+		  "1": { "label": "Holiday schedule", "next": "store_holiday_menu" },
+		  "2": { "label": "Return to store menu", "next": "store_menu" },
+		  "3": { "label": "Prescription services", "next": "rx_menu" },
+		  "0": { "label": "Repeat", "next": "pharmacy_hours_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "store_location_menu": {
+		"prompt": "Store location: 123 Main Street (mock).",
+		"options": {
+		  "1": { "label": "Directions by text", "next": "store_directions_menu" },
+		  "2": { "label": "Nearby stores", "next": "nearby_stores_menu" },
+		  "3": { "label": "Return to store menu", "next": "store_menu" },
+		  "0": { "label": "Repeat", "next": "store_location_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "store_directions_menu": {
+		"prompt": "Directions by text is not available in this mock.",
+		"options": {
+		  "1": { "label": "Try nearby stores", "next": "nearby_stores_menu" },
+		  "2": { "label": "Return to store menu", "next": "store_menu" },
+		  "3": { "label": "Return to main menu", "next": "main_menu" },
+		  "0": { "label": "Repeat", "next": "store_directions_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "nearby_stores_menu": {
+		"prompt": "Nearby stores lookup is available online (mock).",
+		"options": {
+		  "1": { "label": "Return to store location", "next": "store_location_menu" },
+		  "2": { "label": "Return to store menu", "next": "store_menu" },
+		  "0": { "label": "Repeat", "next": "nearby_stores_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "store_holiday_menu": {
+		"prompt": "Holiday schedule varies by location (mock).",
+		"options": {
+		  "1": { "label": "Return to store hours", "next": "store_hours_menu" },
+		  "2": { "label": "Return to store menu", "next": "store_menu" },
+		  "3": { "label": "Pharmacy hours", "next": "pharmacy_hours_menu" },
+		  "0": { "label": "Repeat", "next": "store_holiday_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_menu": {
+		"prompt": "Photo center menu.",
+		"options": {
+		  "1": { "label": "Print status", "next": "photo_status_menu" },
+		  "2": { "label": "Order prints online", "next": "photo_order_menu" },
+		  "3": { "label": "Photo products", "next": "photo_products_menu" },
+		  "0": { "label": "Repeat photo menu", "next": "photo_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_status_menu": {
+		"prompt": "Photo print status requires an order code (mock).",
+		"options": {
+		  "1": { "label": "I have an order code", "next": "photo_code_entry_menu" },
+		  "2": { "label": "I do not have an order code", "next": "photo_no_code_menu" },
+		  "3": { "label": "Return to photo menu", "next": "photo_menu" },
+		  "0": { "label": "Repeat", "next": "photo_status_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_code_entry_menu": {
+		"prompt": "Enter your order code (mock).",
+		"options": {
+		  "1": { "label": "Code accepted", "next": "photo_ready_menu" },
+		  "2": { "label": "Code rejected", "next": "photo_code_error_menu" },
+		  "0": { "label": "Repeat", "next": "photo_code_entry_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_ready_menu": {
+		"prompt": "Your photo order is ready for pickup (mock).",
+		"options": {
+		  "1": { "label": "Pickup hours", "next": "store_hours_menu" },
+		  "2": { "label": "Return to photo menu", "next": "photo_menu" },
+		  "3": { "label": "Return to main menu", "next": "main_menu" },
+		  "0": { "label": "Repeat", "next": "photo_ready_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_code_error_menu": {
+		"prompt": "We could not find that order code (mock).",
+		"options": {
+		  "1": { "label": "Try again", "next": "photo_code_entry_menu" },
+		  "2": { "label": "No code path", "next": "photo_no_code_menu" },
+		  "3": { "label": "Return to photo menu", "next": "photo_menu" },
+		  "0": { "label": "Repeat", "next": "photo_code_error_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_no_code_menu": {
+		"prompt": "If you do not have an order code, please visit the website (mock).",
+		"options": {
+		  "1": { "label": "Return to photo menu", "next": "photo_menu" },
+		  "2": { "label": "Return to main menu", "next": "main_menu" },
+		  "0": { "label": "Repeat", "next": "photo_no_code_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_order_menu": {
+		"prompt": "Online photo ordering is available on our website (mock).",
+		"options": {
+		  "1": { "label": "Photo products", "next": "photo_products_menu" },
+		  "2": { "label": "Return to photo menu", "next": "photo_menu" },
+		  "0": { "label": "Repeat", "next": "photo_order_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_products_menu": {
+		"prompt": "Photo products menu (mock).",
+		"options": {
+		  "1": { "label": "Canvas prints", "next": "photo_products_deadend_menu" },
+		  "2": { "label": "Photo books", "next": "photo_products_deadend_menu" },
+		  "3": { "label": "Greeting cards", "next": "photo_products_deadend_menu" },
+		  "4": { "label": "Return to photo menu", "next": "photo_menu" },
+		  "0": { "label": "Repeat", "next": "photo_products_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "photo_products_deadend_menu": {
+		"prompt": "This product info is available online (mock).",
+		"options": {
+		  "1": { "label": "Return to photo products", "next": "photo_products_menu" },
+		  "2": { "label": "Return to photo menu", "next": "photo_menu" },
+		  "0": { "label": "Repeat", "next": "photo_products_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_menu": {
+		"prompt": "In-store clinic menu.",
+		"options": {
+		  "1": { "label": "Clinic hours", "next": "clinic_hours_menu" },
+		  "2": { "label": "Vaccines", "next": "vaccines_menu" },
+		  "3": { "label": "Appointments", "next": "clinic_appointments_menu" },
+		  "4": { "label": "Test results", "next": "clinic_results_menu" },
+		  "0": { "label": "Repeat clinic menu", "next": "clinic_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_hours_menu": {
+		"prompt": "Clinic hours vary by location (mock).",
+		"options": {
+		  "1": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "2": { "label": "Return to store menu", "next": "store_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_hours_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "vaccines_menu": {
+		"prompt": "Vaccines menu.",
+		"options": {
+		  "1": { "label": "Flu vaccine", "next": "vaccines_info_menu" },
+		  "2": { "label": "COVID vaccine", "next": "vaccines_info_menu" },
+		  "3": { "label": "Other vaccines", "next": "vaccines_info_menu" },
+		  "4": { "label": "Scheduling", "next": "clinic_appointments_menu" },
+		  "0": { "label": "Repeat vaccines menu", "next": "vaccines_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "vaccines_info_menu": {
+		"prompt": "Vaccine information is available online (mock).",
+		"options": {
+		  "1": { "label": "Scheduling", "next": "clinic_appointments_menu" },
+		  "2": { "label": "Return to vaccines menu", "next": "vaccines_menu" },
+		  "0": { "label": "Repeat", "next": "vaccines_info_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_appointments_menu": {
+		"prompt": "Appointments menu.",
+		"options": {
+		  "1": { "label": "Schedule an appointment", "next": "clinic_schedule_deadend_menu" },
+		  "2": { "label": "Cancel an appointment", "next": "clinic_cancel_deadend_menu" },
+		  "3": { "label": "Reschedule", "next": "clinic_reschedule_deadend_menu" },
+		  "4": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_appointments_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_schedule_deadend_menu": {
+		"prompt": "Scheduling is available on our website (mock).",
+		"options": {
+		  "1": { "label": "Return to appointments", "next": "clinic_appointments_menu" },
+		  "2": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_schedule_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_cancel_deadend_menu": {
+		"prompt": "Canceling is available on our website (mock).",
+		"options": {
+		  "1": { "label": "Return to appointments", "next": "clinic_appointments_menu" },
+		  "2": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_cancel_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_reschedule_deadend_menu": {
+		"prompt": "Rescheduling is available on our website (mock).",
+		"options": {
+		  "1": { "label": "Return to appointments", "next": "clinic_appointments_menu" },
+		  "2": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_reschedule_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_results_menu": {
+		"prompt": "Test results menu.",
+		"options": {
+		  "1": { "label": "I have a results code", "next": "clinic_results_code_menu" },
+		  "2": { "label": "I do not have a results code", "next": "clinic_results_no_code_menu" },
+		  "3": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_results_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_results_code_menu": {
+		"prompt": "Enter results code (mock).",
+		"options": {
+		  "1": { "label": "Code accepted", "next": "clinic_results_ready_menu" },
+		  "2": { "label": "Code rejected", "next": "clinic_results_error_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_results_code_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_results_ready_menu": {
+		"prompt": "Your results are available online (mock).",
+		"options": {
+		  "1": { "label": "Return to results menu", "next": "clinic_results_menu" },
+		  "2": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_results_ready_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_results_error_menu": {
+		"prompt": "We could not locate that results code (mock).",
+		"options": {
+		  "1": { "label": "Try again", "next": "clinic_results_code_menu" },
+		  "2": { "label": "No code path", "next": "clinic_results_no_code_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_results_error_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "clinic_results_no_code_menu": {
+		"prompt": "If you do not have a results code, please contact the clinic office (mock).",
+		"options": {
+		  "1": { "label": "Return to results menu", "next": "clinic_results_menu" },
+		  "2": { "label": "Return to clinic menu", "next": "clinic_menu" },
+		  "0": { "label": "Repeat", "next": "clinic_results_no_code_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_menu": {
+		"prompt": "Prescription services menu.",
+		"options": {
+		  "1": { "label": "Check prescription status", "next": "rx_status_menu" },
+		  "2": { "label": "Refill a prescription", "next": "rx_refill_menu" },
+		  "3": { "label": "New prescription questions", "next": "rx_new_menu" },
+		  "4": { "label": "Transfer prescriptions", "next": "rx_transfer_menu" },
+		  "5": { "label": "Medication questions", "next": "rx_med_questions_menu" },
+		  "0": { "label": "Repeat prescription menu", "next": "rx_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_status_menu": {
+		"prompt": "Prescription status menu.",
+		"options": {
+		  "1": { "label": "Enter prescription number", "next": "rx_status_entry_menu" },
+		  "2": { "label": "I do not have a prescription number", "next": "rx_status_no_number_menu" },
+		  "3": { "label": "Text alerts", "next": "rx_text_alerts_menu" },
+		  "4": { "label": "Return to prescription menu", "next": "rx_menu" },
+		  "0": { "label": "Repeat", "next": "rx_status_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_status_entry_menu": {
+		"prompt": "Enter prescription number now (mock).",
+		"options": {
+		  "1": { "label": "Number accepted", "next": "rx_status_found_menu" },
+		  "2": { "label": "Number not found", "next": "rx_status_not_found_menu" },
+		  "3": { "label": "Try again", "next": "rx_status_entry_menu" },
+		  "0": { "label": "Repeat", "next": "rx_status_entry_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_status_found_menu": {
+		"prompt": "Your prescription is in progress (mock).",
+		"options": {
+		  "1": { "label": "Estimated ready time", "next": "rx_ready_time_menu" },
+		  "2": { "label": "Pickup options", "next": "pickup_options_menu" },
+		  "3": { "label": "Problems with status", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_status_found_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_status_not_found_menu": {
+		"prompt": "We could not find that prescription (mock).",
+		"options": {
+		  "1": { "label": "Try entering number again", "next": "rx_status_entry_menu" },
+		  "2": { "label": "I do not have a number", "next": "rx_status_no_number_menu" },
+		  "3": { "label": "Problems with status", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_status_not_found_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_status_no_number_menu": {
+		"prompt": "Without a prescription number, please verify account details (mock).",
+		"options": {
+		  "1": { "label": "Verify by date of birth", "next": "verify_dob_menu" },
+		  "2": { "label": "Verify by phone number", "next": "verify_phone_menu" },
+		  "3": { "label": "Return to status menu", "next": "rx_status_menu" },
+		  "0": { "label": "Repeat", "next": "rx_status_no_number_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_text_alerts_menu": {
+		"prompt": "Text alerts setup is available online (mock).",
+		"options": {
+		  "1": { "label": "Return to status menu", "next": "rx_status_menu" },
+		  "2": { "label": "Return to prescription menu", "next": "rx_menu" },
+		  "0": { "label": "Repeat", "next": "rx_text_alerts_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_ready_time_menu": {
+		"prompt": "Estimated ready time is not guaranteed (mock).",
+		"options": {
+		  "1": { "label": "Return to status found", "next": "rx_status_found_menu" },
+		  "2": { "label": "Pickup options", "next": "pickup_options_menu" },
+		  "3": { "label": "Problems with ready time", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_ready_time_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "pickup_options_menu": {
+		"prompt": "Pickup options menu.",
+		"options": {
+		  "1": { "label": "Drive-thru pickup", "next": "pickup_drive_thru_menu" },
+		  "2": { "label": "In-store pickup", "next": "pickup_in_store_menu" },
+		  "3": { "label": "Curbside pickup", "next": "pickup_curbside_menu" },
+		  "4": { "label": "Delivery options", "next": "delivery_menu" },
+		  "0": { "label": "Repeat", "next": "pickup_options_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "pickup_drive_thru_menu": {
+		"prompt": "Drive-thru pickup is available at select stores (mock).",
+		"options": {
+		  "1": { "label": "Return to pickup options", "next": "pickup_options_menu" },
+		  "2": { "label": "Return to store location", "next": "store_location_menu" },
+		  "0": { "label": "Repeat", "next": "pickup_drive_thru_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "pickup_in_store_menu": {
+		"prompt": "In-store pickup is available during pharmacy hours (mock).",
+		"options": {
+		  "1": { "label": "Pharmacy hours", "next": "pharmacy_hours_menu" },
+		  "2": { "label": "Return to pickup options", "next": "pickup_options_menu" },
+		  "0": { "label": "Repeat", "next": "pickup_in_store_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "pickup_curbside_menu": {
+		"prompt": "Curbside pickup requires app check-in (mock).",
+		"options": {
+		  "1": { "label": "App support", "next": "app_support_menu" },
+		  "2": { "label": "Return to pickup options", "next": "pickup_options_menu" },
+		  "0": { "label": "Repeat", "next": "pickup_curbside_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_refill_menu": {
+		"prompt": "Refill menu.",
+		"options": {
+		  "1": { "label": "Refill by prescription number", "next": "rx_refill_number_menu" },
+		  "2": { "label": "Refill by scanning barcode (app)", "next": "rx_refill_app_menu" },
+		  "3": { "label": "Refill problems", "next": "rx_refill_problem_menu" },
+		  "4": { "label": "Controlled substances", "next": "controlled_substances_menu" },
+		  "0": { "label": "Repeat refill menu", "next": "rx_refill_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_refill_number_menu": {
+		"prompt": "Enter prescription number to refill (mock).",
+		"options": {
+		  "1": { "label": "Number accepted", "next": "rx_refill_submitted_menu" },
+		  "2": { "label": "Number rejected", "next": "rx_refill_rejected_menu" },
+		  "3": { "label": "Try again", "next": "rx_refill_number_menu" },
+		  "0": { "label": "Repeat", "next": "rx_refill_number_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_refill_submitted_menu": {
+		"prompt": "Your refill request was submitted (mock).",
+		"options": {
+		  "1": { "label": "Check status", "next": "rx_status_menu" },
+		  "2": { "label": "Pickup options", "next": "pickup_options_menu" },
+		  "3": { "label": "Refill problems", "next": "rx_refill_problem_menu" },
+		  "0": { "label": "Repeat", "next": "rx_refill_submitted_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_refill_rejected_menu": {
+		"prompt": "We could not process that refill (mock).",
+		"options": {
+		  "1": { "label": "Try another number", "next": "rx_refill_number_menu" },
+		  "2": { "label": "Refill problems", "next": "rx_refill_problem_menu" },
+		  "3": { "label": "Return to refill menu", "next": "rx_refill_menu" },
+		  "0": { "label": "Repeat", "next": "rx_refill_rejected_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_refill_app_menu": {
+		"prompt": "Barcode refill requires the mobile app (mock).",
+		"options": {
+		  "1": { "label": "App support", "next": "app_support_menu" },
+		  "2": { "label": "Return to refill menu", "next": "rx_refill_menu" },
+		  "0": { "label": "Repeat", "next": "rx_refill_app_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_refill_problem_menu": {
+		"prompt": "Refill problems menu.",
+		"options": {
+		  "1": { "label": "Insurance issue", "next": "insurance_menu" },
+		  "2": { "label": "Out of refills", "next": "rx_out_of_refills_menu" },
+		  "3": { "label": "Medication out of stock", "next": "rx_out_of_stock_menu" },
+		  "4": { "label": "Other issues", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_refill_problem_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_out_of_refills_menu": {
+		"prompt": "Out of refills (mock).",
+		"options": {
+		  "1": { "label": "Request a new prescription", "next": "rx_new_menu" },
+		  "2": { "label": "Return to refill problems", "next": "rx_refill_problem_menu" },
+		  "3": { "label": "Escalate", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_out_of_refills_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_out_of_stock_menu": {
+		"prompt": "Medication out of stock (mock).",
+		"options": {
+		  "1": { "label": "Check another store", "next": "nearby_stores_menu" },
+		  "2": { "label": "Delivery options", "next": "delivery_menu" },
+		  "3": { "label": "Escalate", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_out_of_stock_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_new_menu": {
+		"prompt": "New prescription questions menu.",
+		"options": {
+		  "1": { "label": "Doctor sent prescription electronically", "next": "rx_new_e_rx_menu" },
+		  "2": { "label": "Paper prescription", "next": "rx_new_paper_menu" },
+		  "3": { "label": "Prescription transfer from another pharmacy", "next": "rx_transfer_menu" },
+		  "4": { "label": "Controlled substances", "next": "controlled_substances_menu" },
+		  "0": { "label": "Repeat", "next": "rx_new_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_new_e_rx_menu": {
+		"prompt": "Electronic prescriptions may take time to appear (mock).",
+		"options": {
+		  "1": { "label": "Check status", "next": "rx_status_menu" },
+		  "2": { "label": "Escalate issues", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_new_e_rx_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_new_paper_menu": {
+		"prompt": "Paper prescriptions require in-person drop-off (mock).",
+		"options": {
+		  "1": { "label": "Store location", "next": "store_location_menu" },
+		  "2": { "label": "Pharmacy hours", "next": "pharmacy_hours_menu" },
+		  "3": { "label": "Escalate", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_new_paper_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_transfer_menu": {
+		"prompt": "Prescription transfer menu.",
+		"options": {
+		  "1": { "label": "Transfer into XXX Pharmacy", "next": "rx_transfer_in_menu" },
+		  "2": { "label": "Transfer out to another pharmacy", "next": "rx_transfer_out_menu" },
+		  "3": { "label": "Problems with transfer", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_transfer_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_transfer_in_menu": {
+		"prompt": "Transfer-in is initiated online (mock).",
+		"options": {
+		  "1": { "label": "Return to transfer menu", "next": "rx_transfer_menu" },
+		  "2": { "label": "App support", "next": "app_support_menu" },
+		  "3": { "label": "Escalate", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_transfer_in_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_transfer_out_menu": {
+		"prompt": "Transfer-out requires verification (mock).",
+		"options": {
+		  "1": { "label": "Verify by date of birth", "next": "verify_dob_menu" },
+		  "2": { "label": "Verify by phone number", "next": "verify_phone_menu" },
+		  "3": { "label": "Return to transfer menu", "next": "rx_transfer_menu" },
+		  "0": { "label": "Repeat", "next": "rx_transfer_out_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "rx_med_questions_menu": {
+		"prompt": "Medication questions menu.",
+		"options": {
+		  "1": { "label": "Side effects", "next": "med_info_deadend_menu" },
+		  "2": { "label": "Interactions", "next": "med_info_deadend_menu" },
+		  "3": { "label": "Dosage questions", "next": "med_info_deadend_menu" },
+		  "4": { "label": "Escalate to pharmacist", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "rx_med_questions_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "med_info_deadend_menu": {
+		"prompt": "Medication information is available online (mock).",
+		"options": {
+		  "1": { "label": "Return to medication questions", "next": "rx_med_questions_menu" },
+		  "2": { "label": "Escalate", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "med_info_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "controlled_substances_menu": {
+		"prompt": "Controlled substances menu (mock).",
+		"options": {
+		  "1": { "label": "Refill timing policy", "next": "controlled_policy_deadend_menu" },
+		  "2": { "label": "Doctor authorization required", "next": "controlled_policy_deadend_menu" },
+		  "3": { "label": "Escalate controlled substance issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "controlled_substances_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "controlled_policy_deadend_menu": {
+		"prompt": "Controlled substance policy details are not provided in this mock.",
+		"options": {
+		  "1": { "label": "Return to controlled substances menu", "next": "controlled_substances_menu" },
+		  "2": { "label": "Return to refill menu", "next": "rx_refill_menu" },
+		  "3": { "label": "Escalate", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "controlled_policy_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "insurance_menu": {
+		"prompt": "Insurance and billing menu.",
+		"options": {
+		  "1": { "label": "Insurance accepted", "next": "insurance_accepted_menu" },
+		  "2": { "label": "Copay and pricing", "next": "copay_pricing_menu" },
+		  "3": { "label": "Prior authorization", "next": "prior_auth_menu" },
+		  "4": { "label": "Incorrect charge dispute", "next": "charge_dispute_menu" },
+		  "5": { "label": "Escalate insurance issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "insurance_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "insurance_accepted_menu": {
+		"prompt": "Insurance plans vary by location (mock).",
+		"options": {
+		  "1": { "label": "Return to insurance menu", "next": "insurance_menu" },
+		  "2": { "label": "Copay and pricing", "next": "copay_pricing_menu" },
+		  "0": { "label": "Repeat", "next": "insurance_accepted_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "copay_pricing_menu": {
+		"prompt": "Copays depend on plan coverage (mock).",
+		"options": {
+		  "1": { "label": "Generic vs brand pricing", "next": "pricing_deadend_menu" },
+		  "2": { "label": "Discount cards", "next": "pricing_deadend_menu" },
+		  "3": { "label": "Return to insurance menu", "next": "insurance_menu" },
+		  "4": { "label": "Escalate pricing issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "copay_pricing_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "pricing_deadend_menu": {
+		"prompt": "Pricing details are available online (mock).",
+		"options": {
+		  "1": { "label": "Return to copay and pricing", "next": "copay_pricing_menu" },
+		  "2": { "label": "Return to insurance menu", "next": "insurance_menu" },
+		  "0": { "label": "Repeat", "next": "pricing_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "prior_auth_menu": {
+		"prompt": "Prior authorization menu.",
+		"options": {
+		  "1": { "label": "What is prior authorization?", "next": "prior_auth_info_menu" },
+		  "2": { "label": "My prior auth is pending", "next": "prior_auth_pending_menu" },
+		  "3": { "label": "My prior auth was denied", "next": "prior_auth_denied_menu" },
+		  "4": { "label": "Return to insurance menu", "next": "insurance_menu" },
+		  "0": { "label": "Repeat", "next": "prior_auth_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "prior_auth_info_menu": {
+		"prompt": "Prior authorization is managed by your insurer and prescriber (mock).",
+		"options": {
+		  "1": { "label": "Return to prior auth menu", "next": "prior_auth_menu" },
+		  "2": { "label": "Escalate", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "prior_auth_info_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "prior_auth_pending_menu": {
+		"prompt": "Pending prior auth can take several days (mock).",
+		"options": {
+		  "1": { "label": "Return to prior auth menu", "next": "prior_auth_menu" },
+		  "2": { "label": "Check prescription status", "next": "rx_status_menu" },
+		  "3": { "label": "Escalate pending issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "prior_auth_pending_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "prior_auth_denied_menu": {
+		"prompt": "Denied prior authorization requires prescriber follow-up (mock).",
+		"options": {
+		  "1": { "label": "Return to prior auth menu", "next": "prior_auth_menu" },
+		  "2": { "label": "Escalate denied issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "prior_auth_denied_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "charge_dispute_menu": {
+		"prompt": "Incorrect charge dispute menu (mock).",
+		"options": {
+		  "1": { "label": "Verify by date of birth", "next": "verify_dob_menu" },
+		  "2": { "label": "Verify by phone number", "next": "verify_phone_menu" },
+		  "3": { "label": "Return to insurance menu", "next": "insurance_menu" },
+		  "4": { "label": "Escalate dispute", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "charge_dispute_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "delivery_menu": {
+		"prompt": "Delivery and pickup menu.",
+		"options": {
+		  "1": { "label": "Home delivery", "next": "home_delivery_menu" },
+		  "2": { "label": "Same-day courier", "next": "courier_menu" },
+		  "3": { "label": "In-store pickup options", "next": "pickup_options_menu" },
+		  "4": { "label": "Delivery problems", "next": "delivery_problem_menu" },
+		  "0": { "label": "Repeat", "next": "delivery_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "home_delivery_menu": {
+		"prompt": "Home delivery availability varies (mock).",
+		"options": {
+		  "1": { "label": "Check delivery eligibility", "next": "delivery_eligibility_menu" },
+		  "2": { "label": "Delivery pricing", "next": "delivery_pricing_deadend_menu" },
+		  "3": { "label": "Return to delivery menu", "next": "delivery_menu" },
+		  "0": { "label": "Repeat", "next": "home_delivery_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "courier_menu": {
+		"prompt": "Same-day courier is available in select areas (mock).",
+		"options": {
+		  "1": { "label": "Courier eligibility", "next": "delivery_eligibility_menu" },
+		  "2": { "label": "Return to delivery menu", "next": "delivery_menu" },
+		  "0": { "label": "Repeat", "next": "courier_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "delivery_eligibility_menu": {
+		"prompt": "Eligibility check requires account sign-in (mock).",
+		"options": {
+		  "1": { "label": "App support", "next": "app_support_menu" },
+		  "2": { "label": "Return to delivery menu", "next": "delivery_menu" },
+		  "3": { "label": "Escalate eligibility issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "delivery_eligibility_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "delivery_pricing_deadend_menu": {
+		"prompt": "Delivery pricing is shown at checkout (mock).",
+		"options": {
+		  "1": { "label": "Return to home delivery", "next": "home_delivery_menu" },
+		  "2": { "label": "Return to delivery menu", "next": "delivery_menu" },
+		  "0": { "label": "Repeat", "next": "delivery_pricing_deadend_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "delivery_problem_menu": {
+		"prompt": "Delivery problems menu.",
+		"options": {
+		  "1": { "label": "Package delayed", "next": "delivery_delayed_menu" },
+		  "2": { "label": "Wrong address", "next": "delivery_wrong_address_menu" },
+		  "3": { "label": "Missing package", "next": "delivery_missing_menu" },
+		  "4": { "label": "Escalate delivery issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "delivery_problem_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "delivery_delayed_menu": {
+		"prompt": "Delays can occur due to carrier issues (mock).",
+		"options": {
+		  "1": { "label": "Return to delivery problems", "next": "delivery_problem_menu" },
+		  "2": { "label": "Escalate delay", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "delivery_delayed_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "delivery_wrong_address_menu": {
+		"prompt": "Wrong address updates require account verification (mock).",
+		"options": {
+		  "1": { "label": "Verify by date of birth", "next": "verify_dob_menu" },
+		  "2": { "label": "Verify by phone number", "next": "verify_phone_menu" },
+		  "3": { "label": "Escalate address issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "delivery_wrong_address_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "delivery_missing_menu": {
+		"prompt": "Missing package reports require account verification (mock).",
+		"options": {
+		  "1": { "label": "Verify by date of birth", "next": "verify_dob_menu" },
+		  "2": { "label": "Verify by phone number", "next": "verify_phone_menu" },
+		  "3": { "label": "Escalate missing package issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "delivery_missing_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "app_support_menu": {
+		"prompt": "App support menu (mock).",
+		"options": {
+		  "1": { "label": "Return to delivery menu", "next": "delivery_menu" },
+		  "2": { "label": "Escalate app support issue", "next": "escalation_gate_menu" },
+		  "0": { "label": "Repeat", "next": "app_support_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "verify_dob_menu": {
+		"prompt": "For security, please enter your date of birth as M M D D Y Y Y Y.",
+		"options": {
+		  "1": { "label": "Date of birth verified", "next": "verified_customer_menu" },
+		  "2": { "label": "Verification failed, try again", "next": "verify_dob_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "verify_phone_menu": {
+		"prompt": "For security, please enter the phone number on your account.",
+		"options": {
+		  "1": { "label": "Phone number verified", "next": "verified_customer_menu" },
+		  "2": { "label": "Verification failed, try again", "next": "verify_phone_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "escalation_gate_menu": {
+		"prompt": "To connect you with a representative, we need to verify your identity. Choose a verification method.",
+		"options": {
+		  "1": { "label": "Verify with date of birth", "next": "verify_dob_menu" },
+		  "2": { "label": "Verify with phone number", "next": "verify_phone_menu" },
+		  "3": { "label": "Security questions", "next": "security_questions_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "verified_customer_menu": {
+		"prompt": "Thank you for verifying your identity. Your account is now verified. How can we help you today?",
+		"options": {
+		  "1": { "label": "Account information and history", "next": "account_info_menu" },
+		  "2": { "label": "Billing and payment issues", "next": "billing_issues_menu" },
+		  "3": { "label": "Technical support", "next": "technical_support_menu" },
+		  "4": { "label": "Urgent medical concerns", "next": "urgent_concerns_menu" },
+		  "5": { "label": "Complaint or feedback", "next": "complaint_menu" },
+		  "0": { "label": "Repeat", "next": "verified_customer_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "security_questions_menu": {
+		"prompt": "Please answer security questions to verify your identity.",
+		"options": {
+		  "1": { "label": "Answer question 1", "next": "security_q2_menu" },
+		  "2": { "label": "Try different verification", "next": "escalation_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "security_q2_menu": {
+		"prompt": "Second security question (mock).",
+		"options": {
+		  "1": { "label": "Answer question 2", "next": "security_q3_menu" },
+		  "2": { "label": "Try different verification", "next": "escalation_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "security_q3_menu": {
+		"prompt": "Final security question (mock).",
+		"options": {
+		  "1": { "label": "All questions answered correctly", "next": "verified_customer_menu" },
+		  "2": { "label": "Failed verification", "next": "escalation_gate_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "account_info_menu": {
+		"prompt": "Account information menu.",
+		"options": {
+		  "1": { "label": "Recent orders", "next": "recent_orders_menu" },
+		  "2": { "label": "Prescription history", "next": "prescription_history_menu" },
+		  "3": { "label": "Rewards and points", "next": "rewards_menu" },
+		  "4": { "label": "Update account details", "next": "update_account_menu" },
+		  "0": { "label": "Repeat", "next": "account_info_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "recent_orders_menu": {
+		"prompt": "Your recent orders (mock).",
+		"options": {
+		  "1": { "label": "Order details", "next": "order_details_menu" },
+		  "2": { "label": "Track delivery", "next": "track_delivery_menu" },
+		  "3": { "label": "Return to account info", "next": "account_info_menu" },
+		  "0": { "label": "Repeat", "next": "recent_orders_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "order_details_menu": {
+		"prompt": "Order details (mock).",
+		"options": {
+		  "1": { "label": "Refund or return", "next": "refund_menu" },
+		  "2": { "label": "Reorder", "next": "reorder_menu" },
+		  "3": { "label": "Issue with order", "next": "order_issue_menu" },
+		  "0": { "label": "Repeat", "next": "order_details_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "track_delivery_menu": {
+		"prompt": "Tracking information is available online (mock).",
+		"options": {
+		  "1": { "label": "Delivery issue", "next": "delivery_problem_menu" },
+		  "2": { "label": "Return to recent orders", "next": "recent_orders_menu" },
+		  "0": { "label": "Repeat", "next": "track_delivery_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_menu": {
+		"prompt": "Refund processing menu (mock).",
+		"options": {
+		  "1": { "label": "Refund status", "next": "refund_status_menu" },
+		  "2": { "label": "Request new refund", "next": "refund_request_menu" },
+		  "3": { "label": "Refund issue", "next": "refund_issue_menu" },
+		  "0": { "label": "Repeat", "next": "refund_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_status_menu": {
+		"prompt": "Refund typically takes 5-7 business days (mock).",
+		"options": {
+		  "1": { "label": "Refund delayed", "next": "refund_delayed_menu" },
+		  "2": { "label": "Return to refund menu", "next": "refund_menu" },
+		  "0": { "label": "Repeat", "next": "refund_status_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_delayed_menu": {
+		"prompt": "Delayed refunds require investigation (mock).",
+		"options": {
+		  "1": { "label": "Speak to billing specialist", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to refund menu", "next": "refund_menu" },
+		  "0": { "label": "Repeat", "next": "refund_delayed_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_request_menu": {
+		"prompt": "New refund request requires order number (mock).",
+		"options": {
+		  "1": { "label": "Enter order number", "next": "refund_order_entry_menu" },
+		  "2": { "label": "I don't have order number", "next": "refund_no_order_menu" },
+		  "0": { "label": "Repeat", "next": "refund_request_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_order_entry_menu": {
+		"prompt": "Enter order number now (mock).",
+		"options": {
+		  "1": { "label": "Order found", "next": "refund_eligibility_menu" },
+		  "2": { "label": "Order not found", "next": "refund_no_order_menu" },
+		  "0": { "label": "Repeat", "next": "refund_order_entry_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_eligibility_menu": {
+		"prompt": "Checking refund eligibility (mock).",
+		"options": {
+		  "1": { "label": "Eligible for refund", "next": "refund_process_menu" },
+		  "2": { "label": "Not eligible", "next": "refund_ineligible_menu" },
+		  "0": { "label": "Repeat", "next": "refund_eligibility_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_process_menu": {
+		"prompt": "Your refund is being processed (mock).",
+		"options": {
+		  "1": { "label": "Return to refund menu", "next": "refund_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "refund_process_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "refund_ineligible_menu": {
+		"prompt": "This order is not eligible for refund (mock).",
+		"options": {
+		  "1": { "label": "Dispute ineligibility", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to refund menu", "next": "refund_menu" },
+		  "0": { "label": "Repeat", "next": "refund_ineligible_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_no_order_menu": {
+		"prompt": "Without order number, please contact customer service (mock).",
+		"options": {
+		  "1": { "label": "Connect to customer service", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to refund menu", "next": "refund_menu" },
+		  "0": { "label": "Repeat", "next": "refund_no_order_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "refund_issue_menu": {
+		"prompt": "Refund issues menu (mock).",
+		"options": {
+		  "1": { "label": "Wrong refund amount", "next": "specialist_routing_menu" },
+		  "2": { "label": "Refund to wrong account", "next": "specialist_routing_menu" },
+		  "3": { "label": "Return to refund menu", "next": "refund_menu" },
+		  "0": { "label": "Repeat", "next": "refund_issue_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "reorder_menu": {
+		"prompt": "Reordering previous items (mock).",
+		"options": {
+		  "1": { "label": "Confirm reorder", "next": "reorder_confirm_menu" },
+		  "2": { "label": "Modify items", "next": "reorder_modify_menu" },
+		  "3": { "label": "Cancel reorder", "next": "order_details_menu" },
+		  "0": { "label": "Repeat", "next": "reorder_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "reorder_confirm_menu": {
+		"prompt": "Your reorder has been confirmed (mock).",
+		"options": {
+		  "1": { "label": "Track new order", "next": "track_delivery_menu" },
+		  "2": { "label": "Return to account info", "next": "account_info_menu" },
+		  "0": { "label": "Repeat", "next": "reorder_confirm_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "reorder_modify_menu": {
+		"prompt": "Modifications require online access (mock).",
+		"options": {
+		  "1": { "label": "Proceed without modifications", "next": "reorder_confirm_menu" },
+		  "2": { "label": "Cancel reorder", "next": "order_details_menu" },
+		  "0": { "label": "Repeat", "next": "reorder_modify_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "order_issue_menu": {
+		"prompt": "Order issue menu (mock).",
+		"options": {
+		  "1": { "label": "Wrong items received", "next": "specialist_routing_menu" },
+		  "2": { "label": "Damaged items", "next": "specialist_routing_menu" },
+		  "3": { "label": "Missing items", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "order_issue_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "prescription_history_menu": {
+		"prompt": "Your prescription history (mock).",
+		"options": {
+		  "1": { "label": "View all prescriptions", "next": "all_prescriptions_menu" },
+		  "2": { "label": "Discontinued medications", "next": "discontinued_meds_menu" },
+		  "3": { "label": "Return to account info", "next": "account_info_menu" },
+		  "0": { "label": "Repeat", "next": "prescription_history_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "all_prescriptions_menu": {
+		"prompt": "All prescriptions are available online (mock).",
+		"options": {
+		  "1": { "label": "Questions about a prescription", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to prescription history", "next": "prescription_history_menu" },
+		  "0": { "label": "Repeat", "next": "all_prescriptions_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "discontinued_meds_menu": {
+		"prompt": "Discontinued medications list (mock).",
+		"options": {
+		  "1": { "label": "Why was medication discontinued?", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to prescription history", "next": "prescription_history_menu" },
+		  "0": { "label": "Repeat", "next": "discontinued_meds_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "rewards_menu": {
+		"prompt": "Rewards and loyalty points menu (mock).",
+		"options": {
+		  "1": { "label": "Check points balance", "next": "points_balance_menu" },
+		  "2": { "label": "Redeem points", "next": "redeem_points_menu" },
+		  "3": { "label": "Rewards program info", "next": "rewards_info_menu" },
+		  "0": { "label": "Repeat", "next": "rewards_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "points_balance_menu": {
+		"prompt": "Your current points balance (mock).",
+		"options": {
+		  "1": { "label": "Redeem points", "next": "redeem_points_menu" },
+		  "2": { "label": "Points history", "next": "points_history_menu" },
+		  "3": { "label": "Return to rewards menu", "next": "rewards_menu" },
+		  "0": { "label": "Repeat", "next": "points_balance_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "points_history_menu": {
+		"prompt": "Points transaction history (mock).",
+		"options": {
+		  "1": { "label": "Dispute points transaction", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to rewards menu", "next": "rewards_menu" },
+		  "0": { "label": "Repeat", "next": "points_history_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "redeem_points_menu": {
+		"prompt": "Points redemption available online only (mock).",
+		"options": {
+		  "1": { "label": "Return to rewards menu", "next": "rewards_menu" },
+		  "2": { "label": "Return to account info", "next": "account_info_menu" },
+		  "0": { "label": "Repeat", "next": "redeem_points_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "rewards_info_menu": {
+		"prompt": "Rewards program information (mock).",
+		"options": {
+		  "1": { "label": "How to earn points", "next": "earn_points_menu" },
+		  "2": { "label": "Membership tiers", "next": "membership_tiers_menu" },
+		  "3": { "label": "Return to rewards menu", "next": "rewards_menu" },
+		  "0": { "label": "Repeat", "next": "rewards_info_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "earn_points_menu": {
+		"prompt": "Earn points with every purchase (mock).",
+		"options": {
+		  "1": { "label": "Return to rewards info", "next": "rewards_info_menu" },
+		  "2": { "label": "Return to rewards menu", "next": "rewards_menu" },
+		  "0": { "label": "Repeat", "next": "earn_points_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "membership_tiers_menu": {
+		"prompt": "Membership tier benefits (mock).",
+		"options": {
+		  "1": { "label": "Upgrade tier question", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to rewards menu", "next": "rewards_menu" },
+		  "0": { "label": "Repeat", "next": "membership_tiers_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "update_account_menu": {
+		"prompt": "Update account details (mock).",
+		"options": {
+		  "1": { "label": "Change password", "next": "change_password_menu" },
+		  "2": { "label": "Update address", "next": "update_address_menu" },
+		  "3": { "label": "Update contact info", "next": "update_contact_menu" },
+		  "4": { "label": "Close account", "next": "close_account_menu" },
+		  "0": { "label": "Repeat", "next": "update_account_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "change_password_menu": {
+		"prompt": "Password changes are done online (mock).",
+		"options": {
+		  "1": { "label": "Password reset help", "next": "password_help_menu" },
+		  "2": { "label": "Return to update account", "next": "update_account_menu" },
+		  "0": { "label": "Repeat", "next": "change_password_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "password_help_menu": {
+		"prompt": "Password reset link sent to email (mock).",
+		"options": {
+		  "1": { "label": "Did not receive email", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to update account", "next": "update_account_menu" },
+		  "0": { "label": "Repeat", "next": "password_help_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "update_address_menu": {
+		"prompt": "Address updates require verification (mock).",
+		"options": {
+		  "1": { "label": "Confirm new address", "next": "address_confirm_menu" },
+		  "2": { "label": "Cancel address change", "next": "update_account_menu" },
+		  "0": { "label": "Repeat", "next": "update_address_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "address_confirm_menu": {
+		"prompt": "Address change confirmed (mock).",
+		"options": {
+		  "1": { "label": "Return to account info", "next": "account_info_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "address_confirm_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "update_contact_menu": {
+		"prompt": "Contact information update (mock).",
+		"options": {
+		  "1": { "label": "Update phone number", "next": "update_phone_menu" },
+		  "2": { "label": "Update email", "next": "update_email_menu" },
+		  "3": { "label": "Return to update account", "next": "update_account_menu" },
+		  "0": { "label": "Repeat", "next": "update_contact_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "update_phone_menu": {
+		"prompt": "Enter new phone number (mock).",
+		"options": {
+		  "1": { "label": "Phone number updated", "next": "contact_updated_menu" },
+		  "2": { "label": "Cancel", "next": "update_contact_menu" },
+		  "0": { "label": "Repeat", "next": "update_phone_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "update_email_menu": {
+		"prompt": "Enter new email address (mock).",
+		"options": {
+		  "1": { "label": "Email updated", "next": "contact_updated_menu" },
+		  "2": { "label": "Cancel", "next": "update_contact_menu" },
+		  "0": { "label": "Repeat", "next": "update_email_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "contact_updated_menu": {
+		"prompt": "Contact information has been updated (mock).",
+		"options": {
+		  "1": { "label": "Return to account info", "next": "account_info_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "contact_updated_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "close_account_menu": {
+		"prompt": "Account closure requires speaking with a representative (mock).",
+		"options": {
+		  "1": { "label": "Proceed with account closure", "next": "account_closure_confirm_menu" },
+		  "2": { "label": "Cancel account closure", "next": "update_account_menu" },
+		  "0": { "label": "Repeat", "next": "close_account_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "account_closure_confirm_menu": {
+		"prompt": "Are you sure you want to close your account? This action cannot be undone.",
+		"options": {
+		  "1": { "label": "Yes, close my account", "next": "specialist_routing_menu" },
+		  "2": { "label": "No, keep my account", "next": "update_account_menu" },
+		  "0": { "label": "Repeat", "next": "account_closure_confirm_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "billing_issues_menu": {
+		"prompt": "Billing and payment issues menu (mock).",
+		"options": {
+		  "1": { "label": "Payment methods", "next": "payment_methods_menu" },
+		  "2": { "label": "Outstanding balance", "next": "outstanding_balance_menu" },
+		  "3": { "label": "Billing disputes", "next": "billing_disputes_menu" },
+		  "4": { "label": "Payment plans", "next": "payment_plans_menu" },
+		  "0": { "label": "Repeat", "next": "billing_issues_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_methods_menu": {
+		"prompt": "Manage payment methods (mock).",
+		"options": {
+		  "1": { "label": "Add payment method", "next": "add_payment_menu" },
+		  "2": { "label": "Remove payment method", "next": "remove_payment_menu" },
+		  "3": { "label": "Set default payment", "next": "default_payment_menu" },
+		  "0": { "label": "Repeat", "next": "payment_methods_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "add_payment_menu": {
+		"prompt": "Adding payment methods is done online (mock).",
+		"options": {
+		  "1": { "label": "Need help with online process", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to payment methods", "next": "payment_methods_menu" },
+		  "0": { "label": "Repeat", "next": "add_payment_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "remove_payment_menu": {
+		"prompt": "Remove payment method confirmation (mock).",
+		"options": {
+		  "1": { "label": "Confirm removal", "next": "payment_removed_menu" },
+		  "2": { "label": "Cancel", "next": "payment_methods_menu" },
+		  "0": { "label": "Repeat", "next": "remove_payment_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_removed_menu": {
+		"prompt": "Payment method removed (mock).",
+		"options": {
+		  "1": { "label": "Return to payment methods", "next": "payment_methods_menu" },
+		  "2": { "label": "Return to billing issues", "next": "billing_issues_menu" },
+		  "0": { "label": "Repeat", "next": "payment_removed_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "default_payment_menu": {
+		"prompt": "Set default payment method (mock).",
+		"options": {
+		  "1": { "label": "Confirm default payment", "next": "payment_default_set_menu" },
+		  "2": { "label": "Cancel", "next": "payment_methods_menu" },
+		  "0": { "label": "Repeat", "next": "default_payment_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_default_set_menu": {
+		"prompt": "Default payment method updated (mock).",
+		"options": {
+		  "1": { "label": "Return to payment methods", "next": "payment_methods_menu" },
+		  "2": { "label": "Return to billing issues", "next": "billing_issues_menu" },
+		  "0": { "label": "Repeat", "next": "payment_default_set_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "outstanding_balance_menu": {
+		"prompt": "Your current outstanding balance (mock).",
+		"options": {
+		  "1": { "label": "Make a payment", "next": "make_payment_menu" },
+		  "2": { "label": "Payment history", "next": "payment_history_menu" },
+		  "3": { "label": "Dispute balance", "next": "billing_disputes_menu" },
+		  "0": { "label": "Repeat", "next": "outstanding_balance_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "make_payment_menu": {
+		"prompt": "Payment processing (mock).",
+		"options": {
+		  "1": { "label": "Pay in full", "next": "payment_confirm_menu" },
+		  "2": { "label": "Pay partial amount", "next": "payment_partial_menu" },
+		  "3": { "label": "Set up payment plan", "next": "payment_plans_menu" },
+		  "0": { "label": "Repeat", "next": "make_payment_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_confirm_menu": {
+		"prompt": "Payment confirmation (mock).",
+		"options": {
+		  "1": { "label": "Confirm payment", "next": "payment_processed_menu" },
+		  "2": { "label": "Cancel payment", "next": "outstanding_balance_menu" },
+		  "0": { "label": "Repeat", "next": "payment_confirm_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_processed_menu": {
+		"prompt": "Your payment has been processed (mock).",
+		"options": {
+		  "1": { "label": "Return to billing issues", "next": "billing_issues_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "payment_processed_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "payment_partial_menu": {
+		"prompt": "Enter partial payment amount (mock).",
+		"options": {
+		  "1": { "label": "Confirm partial payment", "next": "payment_processed_menu" },
+		  "2": { "label": "Cancel", "next": "make_payment_menu" },
+		  "0": { "label": "Repeat", "next": "payment_partial_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_history_menu": {
+		"prompt": "Your payment history (mock).",
+		"options": {
+		  "1": { "label": "Question about past payment", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to outstanding balance", "next": "outstanding_balance_menu" },
+		  "0": { "label": "Repeat", "next": "payment_history_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "billing_disputes_menu": {
+		"prompt": "Billing dispute center (mock).",
+		"options": {
+		  "1": { "label": "File new dispute", "next": "file_dispute_menu" },
+		  "2": { "label": "Check dispute status", "next": "dispute_status_menu" },
+		  "3": { "label": "Return to billing issues", "next": "billing_issues_menu" },
+		  "0": { "label": "Repeat", "next": "billing_disputes_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "file_dispute_menu": {
+		"prompt": "Filing a dispute requires documentation (mock).",
+		"options": {
+		  "1": { "label": "I have documentation ready", "next": "specialist_routing_menu" },
+		  "2": { "label": "What documentation do I need?", "next": "documentation_info_menu" },
+		  "3": { "label": "Cancel dispute", "next": "billing_disputes_menu" },
+		  "0": { "label": "Repeat", "next": "file_dispute_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "documentation_info_menu": {
+		"prompt": "Required documentation information (mock).",
+		"options": {
+		  "1": { "label": "I have the documentation", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to file dispute", "next": "file_dispute_menu" },
+		  "0": { "label": "Repeat", "next": "documentation_info_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "dispute_status_menu": {
+		"prompt": "Check dispute status (mock).",
+		"options": {
+		  "1": { "label": "Enter dispute ID", "next": "dispute_lookup_menu" },
+		  "2": { "label": "I don't have dispute ID", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "dispute_status_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "dispute_lookup_menu": {
+		"prompt": "Looking up dispute (mock).",
+		"options": {
+		  "1": { "label": "Dispute found", "next": "dispute_details_menu" },
+		  "2": { "label": "Dispute not found", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "dispute_lookup_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "dispute_details_menu": {
+		"prompt": "Dispute details and status (mock).",
+		"options": {
+		  "1": { "label": "Question about dispute", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to billing disputes", "next": "billing_disputes_menu" },
+		  "0": { "label": "Repeat", "next": "dispute_details_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_plans_menu": {
+		"prompt": "Payment plans and installment options (mock).",
+		"options": {
+		  "1": { "label": "Set up new payment plan", "next": "setup_payment_plan_menu" },
+		  "2": { "label": "Modify existing plan", "next": "modify_payment_plan_menu" },
+		  "3": { "label": "Payment plan terms", "next": "payment_plan_terms_menu" },
+		  "0": { "label": "Repeat", "next": "payment_plans_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "setup_payment_plan_menu": {
+		"prompt": "Setting up a new payment plan (mock).",
+		"options": {
+		  "1": { "label": "3-month plan", "next": "payment_plan_confirm_menu" },
+		  "2": { "label": "6-month plan", "next": "payment_plan_confirm_menu" },
+		  "3": { "label": "Custom plan", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "setup_payment_plan_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_plan_confirm_menu": {
+		"prompt": "Confirm payment plan (mock).",
+		"options": {
+		  "1": { "label": "Confirm plan", "next": "payment_plan_activated_menu" },
+		  "2": { "label": "Choose different plan", "next": "setup_payment_plan_menu" },
+		  "0": { "label": "Repeat", "next": "payment_plan_confirm_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_plan_activated_menu": {
+		"prompt": "Your payment plan is now active (mock).",
+		"options": {
+		  "1": { "label": "Return to billing issues", "next": "billing_issues_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "payment_plan_activated_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "modify_payment_plan_menu": {
+		"prompt": "Modify existing payment plan (mock).",
+		"options": {
+		  "1": { "label": "Change payment date", "next": "specialist_routing_menu" },
+		  "2": { "label": "Change plan duration", "next": "specialist_routing_menu" },
+		  "3": { "label": "Cancel payment plan", "next": "cancel_payment_plan_menu" },
+		  "0": { "label": "Repeat", "next": "modify_payment_plan_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "cancel_payment_plan_menu": {
+		"prompt": "Cancel payment plan confirmation (mock).",
+		"options": {
+		  "1": { "label": "Yes, cancel plan", "next": "payment_plan_cancelled_menu" },
+		  "2": { "label": "No, keep plan", "next": "modify_payment_plan_menu" },
+		  "0": { "label": "Repeat", "next": "cancel_payment_plan_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "payment_plan_cancelled_menu": {
+		"prompt": "Payment plan has been cancelled (mock).",
+		"options": {
+		  "1": { "label": "Return to billing issues", "next": "billing_issues_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "payment_plan_cancelled_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "payment_plan_terms_menu": {
+		"prompt": "Payment plan terms and conditions (mock).",
+		"options": {
+		  "1": { "label": "Set up payment plan", "next": "setup_payment_plan_menu" },
+		  "2": { "label": "Return to payment plans", "next": "payment_plans_menu" },
+		  "0": { "label": "Repeat", "next": "payment_plan_terms_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "technical_support_menu": {
+		"prompt": "Technical support menu (mock).",
+		"options": {
+		  "1": { "label": "Website issues", "next": "website_issues_menu" },
+		  "2": { "label": "Mobile app issues", "next": "app_issues_menu" },
+		  "3": { "label": "Account access problems", "next": "access_problems_menu" },
+		  "0": { "label": "Repeat", "next": "technical_support_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "website_issues_menu": {
+		"prompt": "Website technical issues (mock).",
+		"options": {
+		  "1": { "label": "Cannot log in", "next": "login_issues_menu" },
+		  "2": { "label": "Page not loading", "next": "loading_issues_menu" },
+		  "3": { "label": "Other website issue", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "website_issues_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "app_issues_menu": {
+		"prompt": "Mobile app technical issues (mock).",
+		"options": {
+		  "1": { "label": "App crashing", "next": "app_crash_menu" },
+		  "2": { "label": "Cannot log in to app", "next": "login_issues_menu" },
+		  "3": { "label": "Other app issue", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "app_issues_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "login_issues_menu": {
+		"prompt": "Login troubleshooting (mock).",
+		"options": {
+		  "1": { "label": "Reset password", "next": "password_help_menu" },
+		  "2": { "label": "Username forgotten", "next": "username_help_menu" },
+		  "3": { "label": "Account locked", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "login_issues_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "username_help_menu": {
+		"prompt": "Username recovery (mock).",
+		"options": {
+		  "1": { "label": "Send username to email", "next": "username_sent_menu" },
+		  "2": { "label": "Did not receive email", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "username_help_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "username_sent_menu": {
+		"prompt": "Username has been sent to your email (mock).",
+		"options": {
+		  "1": { "label": "Return to technical support", "next": "technical_support_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "username_sent_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "loading_issues_menu": {
+		"prompt": "Page loading issues troubleshooting (mock).",
+		"options": {
+		  "1": { "label": "Clear browser cache", "next": "cache_instructions_menu" },
+		  "2": { "label": "Try different browser", "next": "browser_help_menu" },
+		  "3": { "label": "Still not working", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "loading_issues_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "cache_instructions_menu": {
+		"prompt": "Cache clearing instructions (mock).",
+		"options": {
+		  "1": { "label": "Instructions worked", "next": "technical_support_menu" },
+		  "2": { "label": "Still having issues", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "cache_instructions_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "browser_help_menu": {
+		"prompt": "Supported browsers information (mock).",
+		"options": {
+		  "1": { "label": "Works in different browser", "next": "technical_support_menu" },
+		  "2": { "label": "Still not working", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "browser_help_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "app_crash_menu": {
+		"prompt": "App crash troubleshooting (mock).",
+		"options": {
+		  "1": { "label": "Update app", "next": "app_update_menu" },
+		  "2": { "label": "Reinstall app", "next": "app_reinstall_menu" },
+		  "3": { "label": "Still crashing", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "app_crash_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "app_update_menu": {
+		"prompt": "App update instructions (mock).",
+		"options": {
+		  "1": { "label": "Update resolved issue", "next": "technical_support_menu" },
+		  "2": { "label": "Still crashing", "next": "app_reinstall_menu" },
+		  "0": { "label": "Repeat", "next": "app_update_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "app_reinstall_menu": {
+		"prompt": "App reinstall instructions (mock).",
+		"options": {
+		  "1": { "label": "Reinstall resolved issue", "next": "technical_support_menu" },
+		  "2": { "label": "Still having problems", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "app_reinstall_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "access_problems_menu": {
+		"prompt": "Account access problems (mock).",
+		"options": {
+		  "1": { "label": "Cannot log in", "next": "login_issues_menu" },
+		  "2": { "label": "Account suspended", "next": "specialist_routing_menu" },
+		  "3": { "label": "Account hacked", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "access_problems_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "urgent_concerns_menu": {
+		"prompt": "Urgent medical concerns menu (mock).",
+		"options": {
+		  "1": { "label": "Medication side effects", "next": "side_effects_menu" },
+		  "2": { "label": "Drug interactions", "next": "drug_interactions_menu" },
+		  "3": { "label": "Medication error", "next": "medication_error_menu" },
+		  "4": { "label": "Emergency - call 911", "next": "emergency_menu" },
+		  "0": { "label": "Repeat", "next": "urgent_concerns_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "side_effects_menu": {
+		"prompt": "Medication side effects - speak to pharmacist (mock).",
+		"options": {
+		  "1": { "label": "Connect to pharmacist", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to urgent concerns", "next": "urgent_concerns_menu" },
+		  "0": { "label": "Repeat", "next": "side_effects_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "drug_interactions_menu": {
+		"prompt": "Drug interaction concerns - speak to pharmacist (mock).",
+		"options": {
+		  "1": { "label": "Connect to pharmacist", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to urgent concerns", "next": "urgent_concerns_menu" },
+		  "0": { "label": "Repeat", "next": "drug_interactions_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "medication_error_menu": {
+		"prompt": "Medication error - immediate pharmacist assistance (mock).",
+		"options": {
+		  "1": { "label": "Connect to pharmacist immediately", "next": "specialist_routing_menu" },
+		  "2": { "label": "Return to urgent concerns", "next": "urgent_concerns_menu" },
+		  "0": { "label": "Repeat", "next": "medication_error_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "emergency_menu": {
+		"prompt": "For medical emergencies, please hang up and dial 911 immediately (mock).",
+		"options": {
+		  "1": { "label": "This is not an emergency", "next": "urgent_concerns_menu" },
+		  "2": { "label": "Speak to someone", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "emergency_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "complaint_menu": {
+		"prompt": "Complaint and feedback menu (mock).",
+		"options": {
+		  "1": { "label": "Customer service complaint", "next": "service_complaint_menu" },
+		  "2": { "label": "Product quality complaint", "next": "quality_complaint_menu" },
+		  "3": { "label": "Facility complaint", "next": "facility_complaint_menu" },
+		  "4": { "label": "Positive feedback", "next": "positive_feedback_menu" },
+		  "0": { "label": "Repeat", "next": "complaint_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "service_complaint_menu": {
+		"prompt": "Customer service complaint (mock).",
+		"options": {
+		  "1": { "label": "File formal complaint", "next": "specialist_routing_menu" },
+		  "2": { "label": "Speak to manager", "next": "specialist_routing_menu" },
+		  "3": { "label": "Return to complaints", "next": "complaint_menu" },
+		  "0": { "label": "Repeat", "next": "service_complaint_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "quality_complaint_menu": {
+		"prompt": "Product quality complaint (mock).",
+		"options": {
+		  "1": { "label": "Damaged product", "next": "specialist_routing_menu" },
+		  "2": { "label": "Expired product", "next": "specialist_routing_menu" },
+		  "3": { "label": "Wrong product received", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "quality_complaint_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "facility_complaint_menu": {
+		"prompt": "Facility or store complaint (mock).",
+		"options": {
+		  "1": { "label": "Cleanliness issue", "next": "specialist_routing_menu" },
+		  "2": { "label": "Safety concern", "next": "specialist_routing_menu" },
+		  "3": { "label": "Accessibility issue", "next": "specialist_routing_menu" },
+		  "0": { "label": "Repeat", "next": "facility_complaint_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "positive_feedback_menu": {
+		"prompt": "We appreciate your positive feedback (mock).",
+		"options": {
+		  "1": { "label": "Leave detailed feedback", "next": "detailed_feedback_menu" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "0": { "label": "Repeat", "next": "positive_feedback_menu" },
+		  "9": { "label": "Back to main menu", "next": "main_menu" }
+		}
+	  },
+
+	  "detailed_feedback_menu": {
+		"prompt": "Detailed feedback submission (mock).",
+		"options": {
+		  "1": { "label": "Feedback submitted", "next": "feedback_thankyou_menu" },
+		  "2": { "label": "Cancel", "next": "positive_feedback_menu" },
+		  "0": { "label": "Repeat", "next": "detailed_feedback_menu" },
+		  "9": { "label": "Back to verified customer menu", "next": "verified_customer_menu" }
+		}
+	  },
+
+	  "feedback_thankyou_menu": {
+		"prompt": "Thank you for your feedback (mock).",
+		"options": {
+		  "1": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "2": { "label": "Return to main menu", "next": "main_menu" },
+		  "0": { "label": "Repeat", "next": "feedback_thankyou_menu" }
+		}
+	  },
+
+	  "specialist_routing_menu": {
+		"prompt": "Connecting you to the appropriate specialist. Please hold.",
+		"options": {
+		  "1": { "label": "Continue to specialist", "action": "TRANSFER_TO_HUMAN" },
+		  "2": { "label": "Return to verified customer menu", "next": "verified_customer_menu" },
+		  "9": { "label": "Return to main menu", "next": "main_menu" }
+		}
+	  }
+	}
+}
