@@ -333,7 +333,7 @@ export default function Page() {
 
       <div className="content">
         <div className="panel">
-          <h3>Call Controls</h3>
+          <h3>Call + User Controls</h3>
           <p>Fixed target number is configured in the media-service.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={handleStartCall} disabled={callState.callStatus !== "DISCONNECTED"}>
@@ -347,9 +347,8 @@ export default function Page() {
               Hangup
             </button>
           </div>
-        </div>
-        <div className="panel">
-          <h3>User Controls</h3>
+
+          <h3 style={{ marginTop: "20px" }}>User Controls</h3>
           <p>Join the conference to speak with the callee.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button 
@@ -366,13 +365,6 @@ export default function Page() {
               {userState.isMuted ? "Unmute" : "Mute"}
             </button>
           </div>
-
-          <h3 style={{ marginTop: "20px" }}>Menu Selection Keypad</h3>
-          <p>Press digits to select menu options during the call.</p>
-          <Keypad 
-            onKeyPress={handleKeypadPress} 
-            disabled={callState.callStatus !== "IN_CALL"}
-          />
           
           {/* Debug info */}
           <div style={{ marginTop: "12px", fontSize: "11px", color: "#999", fontFamily: "monospace" }}>
@@ -387,6 +379,14 @@ export default function Page() {
               <div>Conference: {callState.confName}</div>
             </div>
           )}
+        </div>
+        <div className="panel">
+          <h3>Menu Selection Keypad</h3>
+          <p>Press digits to select menu options during the call.</p>
+          <Keypad 
+            onKeyPress={handleKeypadPress} 
+            disabled={callState.callStatus !== "IN_CALL"}
+          />
         </div>
         <div className="panel">
           <h3>Transcripts</h3>
