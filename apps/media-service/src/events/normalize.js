@@ -36,9 +36,9 @@ function vadEvent({ ts, source, action, prob, musicProb }) {
   });
   
   // Debug: log music events (reduced frequency)
-  if ((musicProb ?? 0) > 0.3) {
-    console.log(`[normalize] VAD event with music: musicProb=${musicProb}`);
-  }
+  // if ((musicProb ?? 0) > 0.3) {
+  //   console.log(`[normalize] VAD event with music: musicProb=${musicProb}`);
+  // }
   
   return event;
 }
@@ -70,11 +70,38 @@ function asrEvent({ ts, sessionId, text, confidence, isFinal, track = "remote" }
     ts
   });
 }
+function dtmfEvent({ ts, sessionId, callSid, digits, status, reason }) {
+  return buildEvent({
+    category: "DTMF",
+    payload: {
+      sessionId,
+      callSid,
+      event: `dtmf.${status}`,
+      digits,
+      reason
+    },
+    ts
+  });
+}
+
+function ivrEvent({ ts, sessionId, state, detail }) {
+  return buildEvent({
+    category: "IVR",
+    payload: {
+      sessionId,
+      event: `ivr.${state}`,
+      detail
+    },
+    ts
+  });
+}
 
 module.exports = {
   buildEvent,
   twilioEvent,
   vadEvent,
   conferenceEvent,
-  asrEvent
+  asrEvent,
+  dtmfEvent,
+  ivrEvent
 };

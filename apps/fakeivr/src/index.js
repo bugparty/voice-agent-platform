@@ -53,6 +53,7 @@ async function getSession(callSid, env) {
 			identityCollected: false, // true once user chose a method at L4
 			identityVerified: false, // becomes true once L5 reached
 			retryCount: 0, // counts invalid entries (global-ish)
+			l1Failures: 0, // counts invalid entries at L1 main menu
 			l4Failures: 0,
 			createdAt: Date.now(),
 			lastSeenAt: Date.now(),
@@ -320,6 +321,7 @@ export default {
 				s.identityCollected = false;
 				s.identityVerified = false;
 				s.retryCount = 0;
+				s.l1Failures = 0;
 				s.l4Failures = 0;
 
 				await saveSession(s, env);
@@ -332,7 +334,7 @@ export default {
 				const welcomeMessage = env.WELCOME_MESSAGE || 'Welcome to Side Effect Emporium.While you’re here, may we interest you in our long-term storage solutions?You’ll still be able to see the grass.';
 
 				return twiml((vr) => {
-					vr.play(rickRollUrl)
+					//vr.play(rickRollUrl)
 					vr.say({ voice: 'alice' }, welcomeMessage);
 					vr.redirect({ method: 'POST' }, redirectUrl);
 				});
@@ -367,7 +369,17 @@ export default {
 
 			if (d !== '1' && d !== '2' && d !== '3') {
 				s.retryCount++;
+				s.l1Failures++;
 				await saveSession(s, env);
+
+				// Hang up after 3 invalid attempts at L1 to save costs
+				if (s.l1Failures >= 3) {
+					console.log('[IVR] L1 max retries exceeded, hanging up:', { callSid, l1Failures: s.l1Failures });
+					return twiml((vr) => {
+						vr.say({ voice: 'alice' }, 'We were unable to understand your selection. Please try again later. Goodbye.');
+						vr.hangup();
+					});
+				}
 			}
 
 			return twiml((vr) => {
