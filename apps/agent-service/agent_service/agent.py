@@ -136,7 +136,7 @@ register_tool(
         "required": ["text"]
     },
     fn=speak_to_user,
-    description="Say something to the user; shown in the web UI via Copilot. Use when explaining, confirming, or when a human agent has been reached.",
+    description="Say something to the user; shown in the web UI. Use when explaining, confirming, or when a human agent has been reached.",
 )
 def build_tools_payload():
     tools = []
@@ -245,11 +245,13 @@ def decide_for_asr_final(client, session_state, text: str, model: str = None):
         "role": "system",
         "content": (
             "You are a phone-call  agent for calling a pharmacy  asking about a prescription and transferring the call to a human. "
+            "You will help the user to call a human through the phone system menu"
+            "the speak_to_user tool will tell some information to the user in the web UI. this tool is not for communication with the phone system. "
             "the phone system will often ordered like the last option will tend to transfer the call to a human."
             "Respond with tool calls when you need actions. "
             "Prefer type_dtmf when you need to type a key on the phone."
             "Prefer speak_to_user when you need to speak to the user or you reach a human agent."
-            "if being asked about the prescription number, the  prescription number is 1"
+            "if being asked about the prescription number, the  prescription number is 666"
             "if being asked about the birth date, the birth date is 09/01/92"
             "you prefer prescription number than birth date"
             
