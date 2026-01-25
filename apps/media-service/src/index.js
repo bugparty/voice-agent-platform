@@ -7,12 +7,13 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 const { getConfig } = require("./config/env");
 const { emitUiEvent, onUiEvent } = require("./events/bus");
-const { twilioEvent, vadEvent } = require("./events/normalize");
+const { twilioEvent, vadEvent, dtmfEvent, ivrEvent } = require("./events/normalize");
 const { buildTwiml, buildOutboundConferenceTwiml, buildWebJoinConferenceTwiml } = require("./twilio/twiml");
-const { createTwilioClient, startCall, hangupCall } = require("./twilio/callControl");
+const { createTwilioClient, startCall, hangupCall, sendDtmf } = require("./twilio/callControl");
 const { 
   createSession, 
   getSession, 
+  getSessionByCallSid,
   getSessionBySessionId,
   deleteSession,
   generateSessionId,
@@ -24,6 +25,7 @@ const AccessToken = require("twilio").jwt.AccessToken;
 const VoiceGrant = AccessToken.VoiceGrant;
 const { createVadMock } = require("./mock/vadMock");
 const { createAudioAiClient } = require("./grpc/client");
+const { createIvrController } = require("./ivr/ivrController");
 
 const config = getConfig();
 const app = express();
@@ -38,6 +40,10 @@ app.use((req, res, next) => {
 
 const twilioClient = createTwilioClient(config);
 let activeCallSid = null;
+
+const DTMF_COOLDOWN_MS = 700;
+const DTMF_MAX_LEN = 16;
+const DTMF_PATTERN = /^[0-9*#w]+$/i;
 const audioAiClient = config.usePythonVad
   ? createAudioAiClient({
       protoPath:
@@ -70,7 +76,84 @@ function emitVad({ session, action, prob = 0.8, track, musicProb = 0.0 }) {
       musicProb
     })
   );
+
+  ivrController.handleVadEvent(session, action, source);
 }
+
+function emitDtmfEvent(session, { digits, status, reason }) {
+  emitUiEvent(
+    dtmfEvent({
+      ts: Date.now() - session.callStartAt,
+      sessionId: session.sessionId,
+      callSid: session.callSid,
+      digits,
+      status,
+      reason
+    })
+  );
+}
+
+function emitIvrEvent(session, state, detail) {
+  emitUiEvent(
+    ivrEvent({
+      ts: Date.now() - session.callStartAt,
+      sessionId: session.sessionId,
+      state,
+      detail
+    })
+  );
+}
+
+function validateDigits(digits) {
+  if (!digits || typeof digits !== "string") return "missing";
+  if (digits.length > DTMF_MAX_LEN) return "too_long";
+  if (!DTMF_PATTERN.test(digits)) return "invalid_chars";
+  return null;
+}
+
+function canSendDtmf(session) {
+  return session?.phase === "IVR";
+}
+
+async function sendDtmfWithPolicy(session, digits, source) {
+  if (!session?.callSid) {
+    const reason = "missing_call_sid";
+    emitDtmfEvent(session, { digits, status: "blocked", reason });
+    throw new Error(reason);
+  }
+  if (!canSendDtmf(session)) {
+    const reason = "policy";
+    emitDtmfEvent(session, { digits, status: "blocked", reason });
+    throw new Error(reason);
+  }
+  const now = Date.now();
+  if (now - (session.lastDtmfAt || 0) < DTMF_COOLDOWN_MS) {
+    const reason = "rate_limit";
+    emitDtmfEvent(session, { digits, status: "blocked", reason });
+    throw new Error(reason);
+  }
+
+  try {
+    await sendDtmf({ client: twilioClient, callSid: session.callSid, digits });
+    session.lastDtmfAt = now;
+    emitDtmfEvent(session, { digits, status: "sent", reason: source });
+    return true;
+  } catch (error) {
+    emitDtmfEvent(session, {
+      digits,
+      status: "failed",
+      reason: error?.message || "send_failed"
+    });
+    throw error;
+  }
+}
+
+const ivrController = createIvrController({
+  emitIvrEvent,
+  emitDtmfEvent,
+  sendDtmf: (session, digits) => sendDtmfWithPolicy(session, digits, "ivr"),
+  canSendDtmf
+});
 
 function mapVadAction(eventName) {
   if (!eventName) return null;
@@ -208,12 +291,13 @@ app.post("/call/start", async (req, res) => {
     activeCallSid = call.sid;
     
     // Create session preemptively
-    createSession({ 
+    const session = createSession({ 
       sessionId, 
       confName, 
       callSid: call.sid,
       streamSid: null 
     });
+    ivrController.initSession(session);
     
     emitTwilio({
       callSid: call.sid,
@@ -261,6 +345,55 @@ app.post("/call/hangup", async (req, res) => {
     });
     res.status(500).json({ ok: false, error: error.message });
   }
+});
+
+app.post("/call/dtmf", async (req, res) => {
+  try {
+    const { sessionId, callSid, digits } = req.body || {};
+    const validationError = validateDigits(digits);
+    if (validationError) {
+      return res.status(400).json({ ok: false, error: `invalid_digits:${validationError}` });
+    }
+
+    const session =
+      (sessionId ? getSessionBySessionId(sessionId) : null) ||
+      (callSid ? getSessionByCallSid(callSid) : null);
+
+    if (!session) {
+      return res.status(404).json({ ok: false, error: "session_not_found" });
+    }
+
+    await sendDtmfWithPolicy(session, digits, "manual");
+    res.json({ ok: true });
+  } catch (error) {
+    const reason = error?.message || "send_failed";
+    const status =
+      reason === "policy"
+        ? 403
+        : reason === "rate_limit"
+          ? 429
+          : 500;
+    res.status(status).json({ ok: false, error: reason });
+  }
+});
+
+app.post("/ivr/next-digits", (req, res) => {
+  const { sessionId, digits } = req.body || {};
+  const validationError = validateDigits(digits);
+  if (validationError) {
+    return res.status(400).json({ ok: false, error: `invalid_digits:${validationError}` });
+  }
+  if (!sessionId) {
+    return res.status(400).json({ ok: false, error: "missing_session_id" });
+  }
+
+  const session = getSessionBySessionId(sessionId);
+  if (!session) {
+    return res.status(404).json({ ok: false, error: "session_not_found" });
+  }
+
+  ivrController.setNextDigits(session, digits);
+  res.json({ ok: true });
 });
 
 app.get(config.eventsPath, (req, res) => {
@@ -323,6 +456,7 @@ wss.on("connection", (socket) => {
           streamSid,
           state: 'IN_CALL'
         });
+        ivrController.initSession(session);
         
         console.log("[media-service] ✓ Updated existing session", { 
           sessionId, 
@@ -334,6 +468,7 @@ wss.on("connection", (socket) => {
         // Create new session (fallback for legacy flow)
         console.log("[media-service] Creating new session (legacy fallback)");
         session = createSession({ streamSid, callSid });
+        ivrController.initSession(session);
       }
       if (config.usePythonVad && audioAiClient) {
         // Initialize reconnect state for this session
@@ -689,6 +824,9 @@ wss.on("connection", (socket) => {
         data: message.stop,
         ts: session ? Date.now() - session.callStartAt : 0
       });
+      if (session?.sessionId) {
+        ivrController.cleanupSession(session.sessionId);
+      }
       deleteSession(streamSid);
     }
   });

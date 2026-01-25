@@ -56,9 +56,37 @@ function conferenceEvent({ ts, sessionId, confName, event, data }) {
   });
 }
 
+function dtmfEvent({ ts, sessionId, callSid, digits, status, reason }) {
+  return buildEvent({
+    category: "DTMF",
+    payload: {
+      sessionId,
+      callSid,
+      event: `dtmf.${status}`,
+      digits,
+      reason
+    },
+    ts
+  });
+}
+
+function ivrEvent({ ts, sessionId, state, detail }) {
+  return buildEvent({
+    category: "IVR",
+    payload: {
+      sessionId,
+      event: `ivr.${state}`,
+      detail
+    },
+    ts
+  });
+}
+
 module.exports = {
   buildEvent,
   twilioEvent,
   vadEvent,
-  conferenceEvent
+  conferenceEvent,
+  dtmfEvent,
+  ivrEvent
 };
