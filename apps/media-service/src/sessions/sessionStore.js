@@ -102,10 +102,8 @@ function updateSessionBySessionId(sessionId, updates) {
   if (!session) return null;
   
   // If updating streamSid, update the index
+  // Keep old streamSid mapped so in-flight media doesn't become "no session"
   if (updates.streamSid && updates.streamSid !== session.streamSid) {
-    if (session.streamSid) {
-      sessionsByStreamSid.delete(session.streamSid);
-    }
     sessionsByStreamSid.set(updates.streamSid, session);
   }
   
@@ -121,6 +119,26 @@ function updateSessionBySessionId(sessionId, updates) {
   return session;
 }
 
+/**
+ * Remove streamSid index but keep session by sessionId and callSid
+ * This is used when media stream stops but call may continue (e.g., DTMF scenario)
+ */
+function detachStreamSid(streamSid) {
+  const session = sessionsByStreamSid.get(streamSid);
+  if (session) {
+    sessionsByStreamSid.delete(streamSid);
+    if (session.streamSid === streamSid) {
+      session.streamSid = null;
+    }
+    return session;
+  }
+  return null;
+}
+
+/**
+ * Completely delete a session from all indices
+ * Use this only when the call is truly ended
+ */
 function deleteSession(streamSid) {
   const session = sessionsByStreamSid.get(streamSid);
   if (session) {
@@ -137,6 +155,22 @@ function deleteSession(streamSid) {
   }
 }
 
+/**
+ * Delete session by sessionId - for complete cleanup
+ */
+function deleteSessionBySessionId(sessionId) {
+  const session = sessionsBySessionId.get(sessionId);
+  if (session) {
+    if (session.streamSid) {
+      sessionsByStreamSid.delete(session.streamSid);
+    }
+    if (session.callSid) {
+      sessionsByCallSid.delete(session.callSid);
+    }
+    sessionsBySessionId.delete(sessionId);
+  }
+}
+
 module.exports = {
   createSession,
   getSession,
@@ -144,7 +178,9 @@ module.exports = {
   getSessionBySessionId,
   updateSession,
   updateSessionBySessionId,
+  detachStreamSid,
   deleteSession,
+  deleteSessionBySessionId,
   generateSessionId,
   generateConfName
 };
