@@ -264,14 +264,20 @@ export default function Page() {
     try {
       console.log("[Web UI] Keypad pressed:", digit);
       // Send DTMF tone to backend
-      await fetch(`${baseUrl}/call/dtmf`, {
+      const res = await fetch(`${baseUrl}/call/dtmf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          digit,
+          digits: digit,  // backend expects "digits" not "digit"
           sessionId: callState.sessionId,
         }),
       });
+      const data = await res.json();
+      if (!data.ok) {
+        console.error("[Web UI] DTMF failed:", data.error);
+      } else {
+        console.log("[Web UI] DTMF sent successfully:", digit);
+      }
     } catch (err) {
       console.error("[Web UI] Failed to send DTMF:", err);
     }
