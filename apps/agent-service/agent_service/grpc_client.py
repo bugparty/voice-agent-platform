@@ -3,7 +3,7 @@
 import grpc
 import logging
 from queue import Queue
-from typing import Iterator, Callable, Optional, List
+from typing import Iterator, Callable, List
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,8 @@ class AgentBridgeClient:
         self.stub = None
         self.suggestion_queue = Queue()
         self._connected = False
+        self._responses = None
+        self._stop_requested = False
         
     def connect(self):
         """Establish connection to media-service."""
@@ -93,7 +95,7 @@ class AgentBridgeClient:
             # Then send suggestions from queue
             while True:
                 suggestion = self.suggestion_queue.get()
-                if suggestion is None:  # Sentinel value to stop
+                if suggestion is None or self._stop_requested:  # Sentinel or stop flag
                     break
                     
                 yield agent_pb2.AgentMessage(
@@ -105,6 +107,7 @@ class AgentBridgeClient:
         try:
             # Start bidirectional stream
             responses = self.stub.Subscribe(request_generator())
+            self._responses = responses
             
             # Process incoming events
             for event in responses:
@@ -114,11 +117,16 @@ class AgentBridgeClient:
                     logger.error(f"Error processing event: {e}", exc_info=True)
                     
         except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.CANCELLED or self._stop_requested:
+                logger.info("Subscription cancelled")
+                return
             logger.error(f"gRPC error during subscription: {e.code()} - {e.details()}")
             raise
         except Exception as e:
             logger.error(f"Unexpected error during subscription: {e}", exc_info=True)
             raise
+        finally:
+            self._responses = None
     
     def send_suggestion(
         self,
@@ -150,4 +158,15 @@ class AgentBridgeClient:
         
     def stop_subscription(self):
         """Stop the current subscription."""
+        self._stop_requested = True
         self.suggestion_queue.put(None)  # Sentinel value
+        if self._responses is not None:
+            try:
+                self._responses.cancel()
+            except Exception as e:
+                logger.debug(f"Failed to cancel subscription: {e}")
+        if self.channel is not None:
+            try:
+                self.channel.close()
+            except Exception as e:
+                logger.debug(f"Failed to close channel: {e}")

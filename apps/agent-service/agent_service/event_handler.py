@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 class EventHandler:
     """Handles incoming events from media-service."""
-    
-    def __init__(self):
+
+    def __init__(self, log_service=None):
         """Initialize the event handler."""
         self.event_count = {
             "vad": 0,
@@ -17,6 +17,7 @@ class EventHandler:
             "call": 0,
             "other": 0
         }
+        self.log_service = log_service
         
     def handle_event(self, event) -> None:
         """
@@ -26,6 +27,12 @@ class EventHandler:
             event: SessionEvent proto message
         """
         try:
+            if self.log_service is not None:
+                try:
+                    self.log_service.record_event(event)
+                except Exception as exc:
+                    logger.warning(f"Failed to log event: {exc}")
+
             session_id = event.session_id
             event_type = event.event_type
             timestamp = event.timestamp_ms

@@ -2,13 +2,13 @@
 
 import os
 import sys
-import time
 import logging
 import signal
 from dotenv import load_dotenv
 
 from agent_service.grpc_client import AgentBridgeClient
 from agent_service.event_handler import EventHandler
+from agent_service.event_logger import EventLogService
 
 # Load environment variables
 load_dotenv()
@@ -24,18 +24,25 @@ logger = logging.getLogger(__name__)
 
 # Global flag for graceful shutdown
 shutdown_requested = False
+current_client = None
 
 
 def signal_handler(signum, frame):
     """Handle shutdown signals."""
-    global shutdown_requested
+    global shutdown_requested, current_client
     logger.info(f"Received signal {signum}, initiating graceful shutdown...")
     shutdown_requested = True
+    if current_client is not None:
+        try:
+            current_client.stop_subscription()
+            current_client.disconnect()
+        except Exception as e:
+            logger.debug(f"Failed to stop subscription: {e}")
 
 
 def main():
     """Main function to run the agent service."""
-    global shutdown_requested
+    global shutdown_requested, current_client
     
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
@@ -56,7 +63,10 @@ def main():
     
     # Initialize components
     client = AgentBridgeClient(media_service_url)
-    handler = EventHandler()
+    current_client = client
+    log_dir = os.getenv("EVENT_LOG_DIR", "logs/agent-events")
+    log_service = EventLogService(log_dir=log_dir)
+    handler = EventHandler(log_service=log_service)
     
     try:
         # Connect to media-service
@@ -97,6 +107,7 @@ def main():
             client.disconnect()
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
+        current_client = None
         
         # Print final statistics
         stats = handler.get_statistics()
