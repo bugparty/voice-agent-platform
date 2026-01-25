@@ -373,7 +373,7 @@ export default {
 				await saveSession(s, env);
 
 				// Hang up after 3 invalid attempts at L1 to save costs
-				if (s.l1Failures >= 3) {
+				if (s.l1Failures >= 3 || s.retryCount >= 3) {
 					console.log('[IVR] L1 max retries exceeded, hanging up:', { callSid, l1Failures: s.l1Failures });
 					return twiml((vr) => {
 						vr.say({ voice: 'alice' }, 'We were unable to understand your selection. Please try again later. Goodbye.');
@@ -820,10 +820,10 @@ export default {
 			if (!s) return new Response('Missing CallSid', { status: 400 });
 
 			// Simulate occasional rejection to feel real.
-			const tooShort = digits.length < 4;
+			const tooShort = digits.length < 2;
 			const pseudoFail = Math.random() < 0.25; // 25% chance of "system can't verify"
 
-			if (tooShort || pseudoFail) {
+			if (tooShort ) {
 				s.retryCount++;
 				s.l4Failures++;
 				await saveSession(s, env);
