@@ -71,6 +71,23 @@ voip_agent/
    pnpm --filter web dev
    ```
 
+## Docker Compose (Dev)
+
+This runs the three dev services in containers and auto-starts them.
+
+1. Ensure `apps/media-service/.env` has your Twilio/ngrok values.
+   The web app already includes `apps/web/.env`, but you can adjust it if needed.
+
+2. Start the stack:
+   ```bash
+   docker compose up --build
+   ```
+
+3. Services:
+   - Web: http://localhost:3005
+   - Media service: http://localhost:4001
+   - AI audio gRPC: localhost:50051
+
 ## Local Twilio + ngrok setup
 
 1. Run ngrok:
