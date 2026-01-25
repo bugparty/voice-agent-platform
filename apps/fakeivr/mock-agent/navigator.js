@@ -1,6 +1,6 @@
 /**
  * IVR Tree Navigator
- * 
+ *
  * Handles navigation through the IVR menu tree structure.
  * Loads the tree from ivr-tree.json and provides methods to:
  * - Get current menu state
@@ -21,7 +21,7 @@ export class IVRNavigator {
     // Default to simple scenario in data folder
     const treePath = treeJsonPath || join(__dirname, 'data/ivr-simple.json');
     this.tree = JSON.parse(readFileSync(treePath, 'utf-8'));
-    
+
     // Initialize navigation state
     this.currentMenuId = this.tree.entry;
     this.navigationHistory = [];
@@ -52,7 +52,7 @@ export class IVRNavigator {
     const optionsList = Object.entries(menu.options).map(([key, opt]) => {
       return `  ${key}: ${opt.label}`;
     });
-    
+
     return `Menu: ${menu.prompt}\n\nAvailable options:\n${optionsList.join('\n')}`;
   }
 
@@ -72,7 +72,7 @@ export class IVRNavigator {
       selectedOption: optionKey,
       timestamp: new Date().toISOString()
     });
-    
+
     this.selectionCount++;
 
     // Check if option exists
@@ -82,7 +82,7 @@ export class IVRNavigator {
       if (features.hidden_option_enabled && optionKey === features.hidden_option_key) {
         // Hidden option discovered!
         const action = features.hidden_option_action;
-        
+
         if (action === 'TRANSFER_TO_HUMAN') {
           this.isConnectedToHuman = true;
           return {
@@ -94,7 +94,7 @@ export class IVRNavigator {
           };
         }
       }
-      
+
       // No hidden option or wrong key - return error
       return {
         success: false,
@@ -118,7 +118,7 @@ export class IVRNavigator {
     if (option.next) {
       const previousMenuId = this.currentMenuId;
       this.currentMenuId = option.next;
-      
+
       return {
         success: true,
         message: `Selected option ${optionKey}: "${option.label}". Moving from ${previousMenuId} to ${this.currentMenuId}`,
