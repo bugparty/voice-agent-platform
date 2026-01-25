@@ -56,6 +56,20 @@ function conferenceEvent({ ts, sessionId, confName, event, data }) {
   });
 }
 
+function asrEvent({ ts, sessionId, text, confidence, isFinal, track = "remote" }) {
+  return buildEvent({
+    category: "ASR",
+    payload: {
+      sessionId,
+      event: isFinal ? `asr.${track}.final` : `asr.${track}.partial`,
+      text,
+      confidence,
+      isFinal,
+      track
+    },
+    ts
+  });
+}
 function dtmfEvent({ ts, sessionId, callSid, digits, status, reason }) {
   return buildEvent({
     category: "DTMF",
@@ -87,6 +101,7 @@ module.exports = {
   twilioEvent,
   vadEvent,
   conferenceEvent,
+  asrEvent,
   dtmfEvent,
   ivrEvent
 };

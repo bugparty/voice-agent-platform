@@ -4,9 +4,10 @@
   "private": true,
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js"
+    "dev": "node src/index.js"
   },
   "dependencies": {
+    "@deepgram/sdk": "^4.11.3",
     "@grpc/grpc-js": "^1.12.2",
     "@grpc/proto-loader": "^0.7.12",
     "cors": "^2.8.5",

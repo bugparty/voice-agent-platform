@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package agent;
+
+// media-service 作为服务端，Agent 作为客户端
+service AgentBridge {
+  // Agent 订阅会话事件，同时可以发送建议
+  rpc Subscribe(stream AgentMessage) returns (stream SessionEvent);
+}
+
+// Agent → media-service
+message AgentMessage {
+  string session_id = 1;
+  oneof message {
+    SubscribeRequest subscribe = 10;
+    AgentSuggestion suggestion = 11;
+  }
+}
+
+message SubscribeRequest {
+  string session_id = 1;
+  repeated string event_types = 2; // ["vad.*", "asr.*", "call.*"]
+}
+
+message AgentSuggestion {
+  string suggestion_id = 1;
+  string plan = 2;
+  repeated AgentAction actions = 3;
+  float confidence = 4;
+}
+
+message AgentAction {
+  string action_id = 1;
+  oneof action {
+    SayTTS say_tts = 10;
+    SendDTMF send_dtmf = 11;
+    WaitAction wait = 12;
+    RequestUserTakeover request_takeover = 13;
+    CopilotHint copilot_hint = 14;
+  }
+}
+
+message SayTTS { string text = 1; }
+message SendDTMF { string digits = 1; }
+message WaitAction { string reason = 1; }
+message RequestUserTakeover { string reason = 1; }
+message CopilotHint { string text = 1; }
+
+// media-service → Agent
+message SessionEvent {
+  string session_id = 1;
+  uint64 timestamp_ms = 2;
+  string event_type = 3; // "vad.remote.start", "asr.remote.final", etc.
+  
+  oneof event {
+    VadEventData vad = 10;
+    AsrEventData asr = 11;
+    CallEventData call = 12;
+  }
+}
+
+message VadEventData {
+  string action = 1; // start/update/end
+  float prob = 2;
+  string track = 3;
+  float music_prob = 4;
+}
+
+message AsrEventData {
+  string text = 1;
+  float confidence = 2;
+  bool is_final = 3;
+}
+
+message CallEventData {
+  string status = 1; // connecting/in_call/ending
+  string call_sid = 2;
+}
