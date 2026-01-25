@@ -91,16 +91,19 @@ class AgentBridgeClient:
             logger.info(f"Subscribed to session {session_id} with filters: {event_types}")
             
             # Then send suggestions from queue
+            # Queue items are tuples: (target_session_id, suggestion)
             while True:
-                suggestion = self.suggestion_queue.get()
-                if suggestion is None:  # Sentinel value to stop
+                queue_item = self.suggestion_queue.get()
+                if queue_item is None:  # Sentinel value to stop
                     break
+                
+                target_session_id, suggestion = queue_item
                     
                 yield agent_pb2.AgentMessage(
-                    session_id=session_id,
+                    session_id=target_session_id,  # Use the ACTUAL session ID, not the wildcard!
                     suggestion=suggestion
                 )
-                logger.debug(f"Sent suggestion {suggestion.suggestion_id}")
+                logger.info(f"Sent suggestion {suggestion.suggestion_id} for session {target_session_id}")
         
         try:
             # Start bidirectional stream
@@ -125,7 +128,7 @@ class AgentBridgeClient:
         Send a suggestion to media-service based on agent decision.
         
         Args:
-            session_id: Session ID this suggestion is for
+            session_id: Session ID this suggestion is for (the ACTUAL session, not wildcard)
             decision: Decision dict from IVRAgent with keys:
                 - suggestion_id: Unique ID
                 - digit: DTMF digit to press
@@ -153,9 +156,10 @@ class AgentBridgeClient:
             confidence=confidence_float
         )
         
-        self.suggestion_queue.put(suggestion)
-        logger.info(f"Queued suggestion {decision['suggestion_id']}: Press {decision['digit']}")
+        # Put tuple (session_id, suggestion) so we can send with correct session ID
+        self.suggestion_queue.put((session_id, suggestion))
+        logger.info(f"Queued suggestion {decision['suggestion_id']} for session {session_id}: Press {decision['digit']}")
         
     def stop_subscription(self):
         """Stop the current subscription."""
-        self.suggestion_queue.put(None)  # Sentinel value
+        self.suggestion_queue.put(None)  # Sentinel value (not a tuple, so generator will stop)
