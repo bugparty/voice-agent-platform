@@ -397,13 +397,16 @@ export default function Page() {
             <div style={{ marginBottom: "12px" }}>
               {partialTranscript && (
                 <div style={{ 
-                  padding: "8px 12px", 
-                  background: "#f0f9ff", 
+                  padding: "12px 16px", 
+                  background: "rgba(14, 165, 233, 0.15)", 
                   borderLeft: "3px solid #0ea5e9",
+                  borderRadius: "12px",
                   marginBottom: "8px",
                   fontSize: "14px",
                   fontStyle: "italic",
-                  color: "#666"
+                  color: "#94a3b8",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 0 12px rgba(14, 165, 233, 0.2)"
                 }}>
                   {partialTranscript}
                 </div>
@@ -424,17 +427,20 @@ export default function Page() {
                   <div 
                     key={transcript.id}
                     style={{ 
-                      padding: "8px 12px", 
-                      background: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                      fontSize: "14px"
+                      padding: "12px 16px", 
+                      background: "rgba(30, 41, 59, 0.8)",
+                      border: "1px solid rgba(148, 163, 184, 0.3)",
+                      borderRadius: "12px",
+                      fontSize: "14px",
+                      color: "#e2e8f0",
+                      backdropFilter: "blur(8px)",
+                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)"
                     }}
                   >
                     <div style={{ marginBottom: "4px" }}>
                       {transcript.text}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#999" }}>
+                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>
                       Confidence: {(transcript.confidence * 100).toFixed(0)}% · 
                       {new Date(transcript.timestamp).toLocaleTimeString()}
                     </div>
