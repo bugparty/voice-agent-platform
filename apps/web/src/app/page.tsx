@@ -347,15 +347,9 @@ export default function Page() {
               Hangup
             </button>
           </div>
-
-          <h3 style={{ marginTop: "20px" }}>Menu Selection Keypad</h3>
-          <p>Press digits to select menu options during the call.</p>
-          <Keypad 
-            onKeyPress={handleKeypadPress} 
-            disabled={callState.callStatus !== "IN_CALL"}
-          />
-
-          <h3 style={{ marginTop: "20px" }}>User Controls</h3>
+        </div>
+        <div className="panel">
+          <h3>User Controls</h3>
           <p>Join the conference to speak with the callee.</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button 
@@ -372,6 +366,13 @@ export default function Page() {
               {userState.isMuted ? "Unmute" : "Mute"}
             </button>
           </div>
+
+          <h3 style={{ marginTop: "20px" }}>Menu Selection Keypad</h3>
+          <p>Press digits to select menu options during the call.</p>
+          <Keypad 
+            onKeyPress={handleKeypadPress} 
+            disabled={callState.callStatus !== "IN_CALL"}
+          />
           
           {/* Debug info */}
           <div style={{ marginTop: "12px", fontSize: "11px", color: "#999", fontFamily: "monospace" }}>
@@ -390,7 +391,7 @@ export default function Page() {
         <div className="panel">
           <h3>Transcripts</h3>
           {callState.callStatus !== "IN_CALL" ? (
-            <p style={{ color: "#999", fontSize: "14px" }}>
+            <p style={{ color: "#374151", fontSize: "14px" }}>
               Real-time transcripts will appear here during the call.
             </p>
           ) : (
@@ -412,14 +413,14 @@ export default function Page() {
                 </div>
               )}
               <div style={{ 
-                maxHeight: "200px", 
+                maxHeight: "600px", 
                 overflowY: "auto",
                 display: "flex",
                 flexDirection: "column",
                 gap: "8px"
               }}>
                 {transcripts.length === 0 && !partialTranscript && (
-                  <p style={{ color: "#999", fontSize: "13px" }}>
+                  <p style={{ color: "#374151", fontSize: "13px" }}>
                     Listening for speech...
                   </p>
                 )}
@@ -450,6 +451,8 @@ export default function Page() {
             </div>
           )}
         </div>
+      </div>
+      <div className="content single">
         <div className="panel">
           <h3>Timeline</h3>
           <div className="timeline">
