@@ -18,8 +18,23 @@ ToolFn = Callable[[Dict[str, Any]], Any]
 TOOLS: Dict[str, Dict[str, Any]] = {}
 _grpc_client: Optional[Any] = None
 
-def register_tool(name: str, schema: Dict[str, Any], fn: ToolFn):
-    TOOLS[name] = {"schema": schema, "fn": fn}
+def register_tool(
+    name: str,
+    schema: Dict[str, Any],
+    fn: ToolFn,
+    *,
+    description: Optional[str] = None,
+) -> None:
+    """
+    Register a tool for the Agent to call.
+
+    Args:
+        name: Tool name; must match LLM function calling.
+        schema: JSON Schema describing parameters (type, object, etc.).
+        fn: The function to execute; signature (args: Dict[str, Any]) -> Any.
+        description: Function description for the LLM to decide when to call; if omitted, "Tool: {name}" is used.
+    """
+    TOOLS[name] = {"schema": schema, "fn": fn, "description": description}
 
 # gRPC client injection for tool actions
 def set_grpc_client(client: Any) -> None:
@@ -84,22 +99,22 @@ def speak_to_user(args):
 
     return {"ok": True, "said": text[:80]}
 class SessionState:
-    # 生命周期
+    # Lifecycle
     phase: str               # welcome | menu | verify | transfer | end
     call_active: bool
 
-    # 时间相关
+    # Time-related
     last_event_ts: int
     silence_ms: int
 
-    # 语音/打断
+    # Speech / barge-in
     user_speaking: bool
     can_barge_in: bool
 
-    # 重试 / 错误
+    # Retry / errors
     retry_count: int
 
-    # 允许的行为（硬规则）
+    # Allowed actions (hard rules)
     can_transfer: bool
 
 register_tool(
@@ -109,7 +124,8 @@ register_tool(
         "properties": {"digit": {"type": "string"}},
         "required": ["digit"]
     },
-    fn=type_dtmf
+    fn=type_dtmf,
+    description="Press a DTMF key on the phone keypad. Use when selecting IVR menu options, entering a digit of the prescription number, etc. The digit parameter is one of 0-9, *, #.",
 )
 
 register_tool(
@@ -119,25 +135,27 @@ register_tool(
         "properties": {"text": {"type": "string"}},
         "required": ["text"]
     },
-    fn=speak_to_user
+    fn=speak_to_user,
+    description="Say something to the user; shown in the web UI via Copilot. Use when explaining, confirming, or when a human agent has been reached.",
 )
 def build_tools_payload():
     tools = []
     for name, t in TOOLS.items():
+        desc = t.get("description") or f"Tool: {name}"
         tools.append({
             "type": "function",
             "function": {
                 "name": name,
-                "description": f"Tool: {name}",
+                "description": desc,
                 "parameters": t["schema"]
             }
         })
     return tools
 def run_agent_loop(client, model: str, messages: list, max_steps: int = 6):
     """
-    client: 你的 OpenAI client（或兼容接口）
-    messages: chat messages（含 system/user/assistant/tool）
-    返回：final assistant content + 过程中的 tool 调用记录
+    client: Your OpenAI client (or compatible API).
+    messages: Chat messages (system/user/assistant/tool).
+    Returns: final assistant content + tool call trace for the run.
     """
     tools_payload = build_tools_payload()
     tool_trace = []
@@ -152,10 +170,10 @@ def run_agent_loop(client, model: str, messages: list, max_steps: int = 6):
 
         msg = resp.choices[0].message
 
-        # 1) 有 tool calls：执行每个 tool
+        # 1) Has tool calls: run each tool
         tool_calls = getattr(msg, "tool_calls", None)
         if tool_calls:
-            # 先把 assistant 的 tool_call 消息记入上下文
+            # First append the assistant's tool_call message to context
             messages.append({
                 "role": "assistant",
                 "content": msg.content or "",
@@ -180,7 +198,7 @@ def run_agent_loop(client, model: str, messages: list, max_steps: int = 6):
                 except Exception as e:
                     result = {"ok": False, "error": f"bad_json_args: {e}", "raw": raw_args}
                 else:
-                    # 执行工具
+                    # Run the tool
                     if name not in TOOLS:
                         result = {"ok": False, "error": f"unknown_tool: {name}"}
                     else:
@@ -191,33 +209,33 @@ def run_agent_loop(client, model: str, messages: list, max_steps: int = 6):
 
                 tool_trace.append({"tool": name, "args": raw_args, "result": result})
 
-                # 把 tool result 作为 role=tool 追加回 messages
+                # Append tool result as role=tool to messages
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
                     "content": json.dumps(result, ensure_ascii=False)
                 })
 
-            # 回到 loop 让模型根据 tool 结果继续推理
+            # Continue loop so the model can reason from tool results
             continue
 
-        # 2) 没有 tool call：认为是最终答复
+        # 2) No tool call: treat as final reply
         final_text = msg.content or ""
         messages.append({"role": "assistant", "content": final_text})
         return final_text, tool_trace
 
-    # 超出 max_steps：兜底
+    # Exceeded max_steps: fallback
     return "I’m sorry—I'm having trouble completing that request right now.", tool_trace
 
 def decide_for_asr_final(client, session_state, text: str, model: str = None):
     """
-    根据 ASR final 文本做出决策
-    
+    Make a decision based on ASR final text.
+
     Args:
         client: OpenAI client
-        session_state: SessionState 对象
-        text: ASR final 文本
-        model: 使用的模型名称（可选，默认从环境变量 OPENAI_MODEL 读取）
+        session_state: SessionState instance
+        text: ASR final text
+        model: Model name (optional; defaults to OPENAI_MODEL env var)
     """
     import os
     if model is None:
@@ -231,6 +249,10 @@ def decide_for_asr_final(client, session_state, text: str, model: str = None):
             "Respond with tool calls when you need actions. "
             "Prefer type_dtmf when you need to type a key on the phone."
             "Prefer speak_to_user when you need to speak to the user or you reach a human agent."
+            "if being asked about the prescription number, the  prescription number is 1"
+            "if being asked about the birth date, the birth date is 09/01/92"
+            "you prefer prescription number than birth date"
+            
         )
     }
 
@@ -245,8 +267,8 @@ def decide_for_asr_final(client, session_state, text: str, model: str = None):
         }, ensure_ascii=False)
     }
 
-    # history（只保留 final turns）
-    # 将 "menu" role 映射为 "assistant"（IVR 菜单是系统播放的语音）
+    # history (final turns only)
+    # Map "menu" role to "assistant" (IVR menu is system-played speech)
     def map_role(role: str) -> str:
         if role == "menu":
             return "assistant"
@@ -262,15 +284,15 @@ def decide_for_asr_final(client, session_state, text: str, model: str = None):
 
 class Phase(Enum):
     BOOTSTRAP = auto()
-    COLLECT_MENU = auto()     # 收集一段菜单 ASR
-    DECIDING = auto()         # vad stop 后触发 agent；期间仍继续收下一段
+    COLLECT_MENU = auto()     # Collect a menu ASR segment
+    DECIDING = auto()         # Trigger agent on VAD stop; keep collecting next segment meanwhile
     CONNECTED = auto()
     ENDED = auto()
 
 
 @dataclass
 class Turn:
-    role: str      # "system" | "user" | "assistant" | "menu" (menu 会在 API 调用时映射为 assistant)
+    role: str      # "system" | "user" | "assistant" | "menu" (menu is mapped to assistant when calling the API)
     text: str
     ts_ms: int
 
@@ -279,53 +301,53 @@ class Turn:
 class SessionState:
     session_id: str
 
-    # 生命周期/阶段
-    phase: str = "welcome"        # 你 decide_for_asr_final 用字符串，这里保持字符串
+    # Lifecycle / phase
+    phase: str = "welcome"        # decide_for_asr_final uses string; keep it as string here
     call_active: bool = True
 
-    # 时间相关
+    # Time-related
     last_event_ts: int = 0
     silence_ms: int = 0
 
-    # 语音/打断
+    # Speech / barge-in
     user_speaking: bool = False
     can_barge_in: bool = True
 
-    # 重试/错误
+    # Retry / errors
     retry_count: int = 0
 
-    # 允许行为
-    can_transfer: bool = True      # 你后面如果要 verify gate，可以改这里
+    # Allowed actions
+    can_transfer: bool = True      # Change here if you add a verify gate later
 
-    # 结构化记忆（对齐 decide_for_asr_final）
+    # Structured memory (aligned with decide_for_asr_final)
     slots: Dict[str, Any] = field(default_factory=dict)
     last_tool: Optional[Dict[str, Any]] = None
     history: Deque[Turn] = field(default_factory=lambda: deque(maxlen=20))
 
-    # --- 菜单段收集缓冲 ---
-    menu_buf: List[str] = field(default_factory=list)      # 当前段
-    next_buf: List[str] = field(default_factory=list)      # DECIDING 时收到的下一段
+    # Menu segment collection buffers
+    menu_buf: List[str] = field(default_factory=list)      # Current segment
+    next_buf: List[str] = field(default_factory=list)      # Next segment received during DECIDING
 
     segment_idx: int = 0
     deciding_task: Optional[asyncio.Task] = None
     deciding_segment: Optional[int] = None
 
-    # 用于你的“模拟药房固定流程”提示（可选）
-    step_idx: int = 0   # 0=第一层，1=第二层，2=药剂编码
+    # For your "simulated pharmacy fixed flow" prompt (optional)
+    step_idx: int = 0   # 0=first level, 1=second level, 2=pharmacist code
 
 
 # ----------------------------
-# 2) FSM：只负责“什么时候触发 agent”，不负责直接按键
+# 2) FSM: only "when to trigger agent", not direct keypress
 # ----------------------------
 
 class CallFSM:
     """
-    输入：call/vad/asr events
-    
-    职责：
-    - 收集 ASR final 事件的文本到 buffer
-    - 当 VAD stop (end) 事件到来时，合并 buffer 并调用 decide_for_asr_final
-    - 管理 session 状态和生命周期
+    Input: call/vad/asr events.
+
+    Responsibilities:
+    - Collect ASR final text into buffer
+    - On VAD stop (end), merge buffer and call decide_for_asr_final
+    - Manage session state and lifecycle
     """
 
     def __init__(self, *, llm_client, decide_for_asr_final_fn):
@@ -346,14 +368,14 @@ class CallFSM:
         return self._lock
 
     def get_or_create_session(self, session_id: str) -> SessionState:
-        """获取或创建 session 状态"""
+        """Get or create session state."""
         if session_id not in self.sessions:
             self.sessions[session_id] = SessionState(session_id=session_id)
             logger.info(f"[CallFSM] Created new session: {session_id}")
         return self.sessions[session_id]
 
     def remove_session(self, session_id: str) -> None:
-        """移除 session"""
+        """Remove session."""
         if session_id in self.sessions:
             del self.sessions[session_id]
             logger.info(f"[CallFSM] Removed session: {session_id}")
@@ -368,13 +390,13 @@ class CallFSM:
         track: str = "remote"
     ) -> None:
         """
-        处理 ASR 事件
-        
-        - 只收集 final 事件
-        - 文本添加到 menu_buf（如果正在 DECIDING，则添加到 next_buf）
+        Handle ASR event.
+
+        - Only collect final events
+        - Append text to menu_buf (or to next_buf if DECIDING)
         """
         if not is_final:
-            # 忽略 partial 事件
+            # Ignore partial events
             return
 
         if not text or not text.strip():
@@ -384,7 +406,7 @@ class CallFSM:
             session = self.get_or_create_session(session_id)
             session.last_event_ts = timestamp_ms
 
-            # 如果正在 DECIDING 阶段，收集到 next_buf 供下一轮使用
+            # If in DECIDING, append to next_buf for the next round
             if session.deciding_task is not None and not session.deciding_task.done():
                 session.next_buf.append(text.strip())
                 logger.debug(
@@ -392,7 +414,7 @@ class CallFSM:
                     f"text='{text[:50]}...', next_buf_len={len(session.next_buf)}"
                 )
             else:
-                # 正常收集到 menu_buf
+                # Normally append to menu_buf
                 session.menu_buf.append(text.strip())
                 logger.debug(
                     f"[CallFSM] ASR final (to menu_buf): session={session_id}, "
@@ -409,14 +431,14 @@ class CallFSM:
         timestamp_ms: int
     ) -> Optional[Tuple[str, list]]:
         """
-        处理 VAD 事件
-        
-        - action="start": 标记 user_speaking=True
-        - action="end": 合并 menu_buf，触发 decide_for_asr_final
-        
-        返回: (final_text, tool_trace) 如果触发了决策，否则 None
+        Handle VAD event.
+
+        - action="start": set user_speaking=True
+        - action="end": merge menu_buf, trigger decide_for_asr_final
+
+        Returns: (final_text, tool_trace) if decision was triggered, else None.
         """
-        # 用于在锁外等待的变量
+        # Variables for waiting outside the lock
         task: Optional[asyncio.Task] = None
         session: Optional[SessionState] = None
         
@@ -436,23 +458,23 @@ class CallFSM:
                     f"menu_buf_len={len(session.menu_buf)}"
                 )
 
-                # 检查是否有收集到的文本
+                # Check if any text was collected
                 if not session.menu_buf:
                     logger.debug(f"[CallFSM] VAD end but menu_buf is empty, skipping")
                     return None
 
-                # 如果已经有一个 deciding_task 在运行，不启动新的决策
+                # If a deciding_task is already running, do not start a new decision
                 if session.deciding_task is not None and not session.deciding_task.done():
                     logger.debug(
                         f"[CallFSM] Already deciding for segment {session.deciding_segment}, "
                         f"buffering to next_buf"
                     )
-                    # 将当前 menu_buf 移到 next_buf，等待当前决策完成
+                    # Move current menu_buf to next_buf, wait for current decision to finish
                     session.next_buf.extend(session.menu_buf)
                     session.menu_buf.clear()
                     return None
 
-                # 合并所有收集到的文本
+                # Merge all collected text
                 combined_text = " ".join(session.menu_buf)
                 session.menu_buf.clear()
                 session.segment_idx += 1
@@ -465,32 +487,32 @@ class CallFSM:
                     f"segment={session.segment_idx}, text='{combined_text[:80]}...'"
                 )
 
-                # 记录到 history
+                # Append to history
                 session.history.append(Turn(
                     role="menu",
                     text=combined_text,
                     ts_ms=timestamp_ms
                 ))
 
-                # 创建决策任务并存储，以便其他事件可以检查是否正在决策中
+                # Create and store the decision task so other events can check if a decision is in progress
                 session.deciding_segment = session.segment_idx
                 decision_coro = self._run_decision(session, combined_text)
                 session.deciding_task = asyncio.create_task(decision_coro)
                 
-                # 保存 task 引用，然后释放锁，让其他事件可以检查 deciding_task
+                # Save task ref and release lock so other events can check deciding_task
                 task = session.deciding_task
 
             elif action == "update":
-                # update 事件只更新 prob，不触发决策
+                # update event only updates prob, does not trigger decision
                 return None
 
-        # 在锁外等待决策完成，这样其他事件可以继续处理
+        # Wait for decision outside the lock so other events can continue
         if task is not None and session is not None:
             try:
                 result = await task
                 return result
             finally:
-                # 决策完成后清理 task 引用
+                # Clear task ref after decision completes
                 async with self._get_lock():
                     if session.deciding_task is task:
                         session.deciding_task = None
@@ -502,9 +524,7 @@ class CallFSM:
         session: SessionState,
         text: str
     ) -> Tuple[str, list]:
-        """
-        运行 LLM 决策
-        """
+        """Run LLM decision."""
         try:
             final_text, trace = self.decide_for_asr_final(
                 self.llm_client,
@@ -512,7 +532,7 @@ class CallFSM:
                 text
             )
 
-            # 记录 assistant 回复到 history
+            # Append assistant reply to history
             if final_text:
                 session.history.append(Turn(
                     role="assistant",
@@ -520,7 +540,7 @@ class CallFSM:
                     ts_ms=int(time.time() * 1000)
                 ))
 
-            # 更新 last_tool
+            # Update last_tool
             if trace:
                 session.last_tool = trace[-1] if trace else None
 
@@ -530,7 +550,7 @@ class CallFSM:
                 f"tools_called={len(trace)}"
             )
 
-            # 如果 next_buf 有内容，移动到 menu_buf
+            # If next_buf has content, move it to menu_buf
             if session.next_buf:
                 session.menu_buf.extend(session.next_buf)
                 session.next_buf.clear()
@@ -553,9 +573,7 @@ class CallFSM:
         call_sid: str,
         timestamp_ms: int
     ) -> None:
-        """
-        处理 call 生命周期事件
-        """
+        """Handle call lifecycle event."""
         async with self._get_lock():
             session = self.get_or_create_session(session_id)
             session.last_event_ts = timestamp_ms
@@ -573,13 +591,13 @@ class CallFSM:
                 session.call_active = False
                 session.phase = "end"
                 logger.info(f"[CallFSM] Call ended: session={session_id}")
-                # 可选：清理 session
+                # Optional: clear session
                 # self.remove_session(session_id)
 
     def get_session_state(self, session_id: str) -> Optional[SessionState]:
-        """获取 session 状态（只读）"""
+        """Get session state (read-only)."""
         return self.sessions.get(session_id)
 
     def get_all_sessions(self) -> Dict[str, SessionState]:
-        """获取所有 session"""
+        """Get all sessions."""
         return self.sessions.copy()
