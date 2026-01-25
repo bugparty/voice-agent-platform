@@ -435,25 +435,30 @@ export default function Page() {
                     Listening for speech...
                   </p>
                 )}
-                {messages.map((message) => (
+                {messages.map((message) => {
+                  const isAgent = message.source === "agent";
+                  return (
                   <div 
                     key={message.id}
                     style={{ 
                       padding: "12px 16px", 
-                      background: "rgba(30, 41, 59, 0.8)",
+                      background: isAgent ? "rgba(16, 185, 129, 0.18)" : "rgba(30, 41, 59, 0.8)",
                       border: "1px solid rgba(148, 163, 184, 0.3)",
+                      borderLeft: isAgent ? "3px solid #10b981" : "3px solid #0ea5e9",
                       borderRadius: "12px",
                       fontSize: "14px",
-                      color: "#e2e8f0",
+                      color: isAgent ? "#d1fae5" : "#e2e8f0",
                       backdropFilter: "blur(8px)",
-                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)"
+                      boxShadow: isAgent 
+                        ? "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 12px rgba(16, 185, 129, 0.15)" 
+                        : "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)"
                     }}
                   >
                     <div style={{ marginBottom: "4px" }}>
                       {message.text}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>
-                      {message.source === "agent" ? "Agent" : "Caller"}
+                    <div style={{ fontSize: "11px", color: isAgent ? "#6ee7b7" : "#94a3b8" }}>
+                      {isAgent ? "Agent" : "Caller"}
                       {message.confidence !== undefined && (
                         <> · Confidence: {(message.confidence * 100).toFixed(0)}%</>
                       )}
@@ -461,7 +466,8 @@ export default function Page() {
                       {new Date(message.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
