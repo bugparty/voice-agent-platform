@@ -120,28 +120,38 @@ function subscribeHandler(call) {
  * @param {object} event - 事件对象
  */
 function pushEvent(sessionId, event) {
-  const stream = sessionStreams.get(sessionId);
-  if (!stream) {
-    return false;
-  }
-
-  const filters = sessionFilters.get(sessionId);
   const eventType = event.type || event.event_type || "";
+  let pushed = false;
   
-  // 检查事件是否匹配过滤器
-  if (!matchesFilter(eventType, filters)) {
-    return false;
-  }
+  // Check all subscribed streams (including wildcard subscriptions)
+  for (const [subscribedSessionId, stream] of sessionStreams) {
+    // Match exact session ID or wildcard "*"
+    if (subscribedSessionId === sessionId || subscribedSessionId === "*") {
+      const filters = sessionFilters.get(subscribedSessionId);
+      
+      // Check if event type matches filter
+      if (!matchesFilter(eventType, filters)) {
+        continue;
+      }
 
-  try {
-    // 转换事件格式为 Proto 格式
-    const sessionEvent = convertToSessionEvent(sessionId, event);
-    stream.write(sessionEvent);
-    return true;
-  } catch (error) {
-    console.error(`[AgentServer] Error pushing event to agent for session ${sessionId}:`, error);
-    return false;
+      try {
+        // Convert and send event
+        const sessionEvent = convertToSessionEvent(sessionId, event);
+        stream.write(sessionEvent);
+        pushed = true;
+        
+        // Log successful push for ASR events
+        if (eventType.startsWith("asr.")) {
+          const text = event.payload?.text || event.text || "";
+          console.log(`[AgentServer] Pushed ${eventType} to agent (session: ${subscribedSessionId}): "${text.substring(0, 50)}..."`);
+        }
+      } catch (error) {
+        console.error(`[AgentServer] Error pushing event to agent for session ${sessionId}:`, error);
+      }
+    }
   }
+  
+  return pushed;
 }
 
 /**

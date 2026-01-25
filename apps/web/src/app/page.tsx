@@ -33,6 +33,9 @@ type TranscriptItem = {
   text: string;
   confidence: number;
   isFinal: boolean;
+  isAgent?: boolean;
+  digit?: string;
+  reasoning?: string;
 };
 
 type UserState = {
@@ -61,6 +64,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [transcripts, setTranscripts] = useState<TranscriptItem[]>([]);
   const [partialTranscript, setPartialTranscript] = useState<string>("");
+  const [agentPressedDigit, setAgentPressedDigit] = useState<string | null>(null);
   
   const baseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_MEDIA_SERVICE_URL || "http://localhost:4001",
@@ -121,6 +125,30 @@ export default function Page() {
         } else {
           // Update partial transcript
           setPartialTranscript(text);
+        }
+      }
+      if (event.category === "AGENT" || event.type === "AGENT") {
+        // Agent made a decision
+        const digit = event.payload?.digit as string;
+        const reasoning = event.payload?.reasoning as string;
+        const confidence = Number(event.payload?.confidence ?? 0);
+        
+        if (digit) {
+          // Highlight the digit on keypad
+          setAgentPressedDigit(digit);
+          setTimeout(() => setAgentPressedDigit(null), 2000); // Clear after 2s
+          
+          // Add agent decision to transcripts
+          setTranscripts((prev) => [{
+            id: event.id,
+            timestamp: event.ts,
+            text: `Agent selected: ${digit}`,
+            confidence,
+            isFinal: true,
+            isAgent: true,
+            digit,
+            reasoning,
+          }, ...prev].slice(0, 50));
         }
       }
     });
@@ -386,6 +414,7 @@ export default function Page() {
           <Keypad 
             onKeyPress={handleKeypadPress} 
             disabled={callState.callStatus !== "IN_CALL"}
+            highlightedKey={agentPressedDigit}
           />
         </div>
         <div className="panel">
@@ -429,18 +458,30 @@ export default function Page() {
                     key={transcript.id}
                     style={{ 
                       padding: "12px 16px", 
-                      background: "rgba(30, 41, 59, 0.8)",
-                      border: "1px solid rgba(148, 163, 184, 0.3)",
+                      background: transcript.isAgent 
+                        ? "rgba(16, 185, 129, 0.15)" 
+                        : "rgba(30, 41, 59, 0.8)",
+                      border: transcript.isAgent
+                        ? "2px solid rgba(16, 185, 129, 0.5)"
+                        : "1px solid rgba(148, 163, 184, 0.3)",
                       borderRadius: "12px",
                       fontSize: "14px",
                       color: "#e2e8f0",
                       backdropFilter: "blur(8px)",
-                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)"
+                      boxShadow: transcript.isAgent
+                        ? "0 0 20px rgba(16, 185, 129, 0.3)"
+                        : "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)"
                     }}
                   >
-                    <div style={{ marginBottom: "4px" }}>
+                    <div style={{ marginBottom: "4px", fontWeight: transcript.isAgent ? "600" : "normal" }}>
+                      {transcript.isAgent && "🤖 "}
                       {transcript.text}
                     </div>
+                    {transcript.reasoning && (
+                      <div style={{ fontSize: "12px", color: "#6ee7b7", marginBottom: "4px", fontStyle: "italic" }}>
+                        {transcript.reasoning}
+                      </div>
+                    )}
                     <div style={{ fontSize: "11px", color: "#94a3b8" }}>
                       Confidence: {(transcript.confidence * 100).toFixed(0)}% · 
                       {new Date(transcript.timestamp).toLocaleTimeString()}

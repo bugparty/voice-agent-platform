@@ -120,33 +120,41 @@ class AgentBridgeClient:
             logger.error(f"Unexpected error during subscription: {e}", exc_info=True)
             raise
     
-    def send_suggestion(
-        self,
-        suggestion_id: str,
-        plan: str,
-        actions: List,
-        confidence: float = 0.8
-    ):
+    def send_suggestion(self, session_id: str, decision: dict):
         """
-        Send a suggestion to media-service.
+        Send a suggestion to media-service based on agent decision.
         
         Args:
-            suggestion_id: Unique identifier for this suggestion
-            plan: Description of the suggested plan
-            actions: List of actions to execute
-            confidence: Confidence score (0.0 - 1.0)
+            session_id: Session ID this suggestion is for
+            decision: Decision dict from IVRAgent with keys:
+                - suggestion_id: Unique ID
+                - digit: DTMF digit to press
+                - reasoning: Explanation
+                - confidence: "high", "medium", or "low"
+                - plan: Full plan description
         """
         from agent_service.proto import agent_pb2
         
+        # Convert confidence string to float
+        confidence_map = {"high": 0.9, "medium": 0.6, "low": 0.3}
+        confidence_float = confidence_map.get(decision.get("confidence", "medium"), 0.6)
+        
+        # Create SendDTMF action
+        dtmf_action = agent_pb2.AgentAction(
+            action_id=f"dtmf_{decision['suggestion_id']}",
+            send_dtmf=agent_pb2.SendDTMF(digits=decision["digit"])
+        )
+        
+        # Create suggestion
         suggestion = agent_pb2.AgentSuggestion(
-            suggestion_id=suggestion_id,
-            plan=plan,
-            actions=actions,
-            confidence=confidence
+            suggestion_id=decision["suggestion_id"],
+            plan=decision["plan"],
+            actions=[dtmf_action],
+            confidence=confidence_float
         )
         
         self.suggestion_queue.put(suggestion)
-        logger.info(f"Queued suggestion {suggestion_id}: {plan}")
+        logger.info(f"Queued suggestion {decision['suggestion_id']}: Press {decision['digit']}")
         
     def stop_subscription(self):
         """Stop the current subscription."""

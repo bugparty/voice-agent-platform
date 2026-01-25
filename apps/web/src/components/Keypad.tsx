@@ -6,6 +6,7 @@ import "./keypad.css";
 interface KeypadProps {
   onKeyPress: (digit: string) => void;
   disabled?: boolean;
+  highlightedKey?: string | null;
 }
 
 const KEYPAD_BUTTONS = [
@@ -15,7 +16,7 @@ const KEYPAD_BUTTONS = [
   ["*", "0", "#"],
 ];
 
-export function Keypad({ onKeyPress, disabled = false }: KeypadProps) {
+export function Keypad({ onKeyPress, disabled = false, highlightedKey = null }: KeypadProps) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [displayValue, setDisplayValue] = useState<string>("");
 
@@ -29,6 +30,9 @@ export function Keypad({ onKeyPress, disabled = false }: KeypadProps) {
     // Visual feedback duration
     setTimeout(() => setActiveKey(null), 150);
   };
+  
+  // Determine which key should be highlighted (user press or agent press)
+  const currentHighlight = activeKey || highlightedKey;
 
   const handleClear = () => {
     setDisplayValue("");
@@ -69,7 +73,7 @@ export function Keypad({ onKeyPress, disabled = false }: KeypadProps) {
             {row.map((digit) => (
               <button
                 key={digit}
-                className={`keypad-button ${activeKey === digit ? "active" : ""} ${disabled ? "disabled" : ""}`}
+                className={`keypad-button ${currentHighlight === digit ? "active" : ""} ${highlightedKey === digit ? "agent-highlight" : ""} ${disabled ? "disabled" : ""}`}
                 onClick={() => handleKeyPress(digit)}
                 disabled={disabled}
               >
