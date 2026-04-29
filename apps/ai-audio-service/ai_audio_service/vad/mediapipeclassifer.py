@@ -14,7 +14,7 @@ from mediapipe.tasks.python.components.containers import AudioData
 class MediaPipeClassifier:
     """MediaPipe YAMNet-based audio classifier for speech and music detection."""
     
-    # μ-law 解码查找表（标准 ITU-T G.711）
+    # μ-law decode lookup table (ITU-T G.711 standard)
     _MULAW_TABLE = None
     
     def __init__(self, model_path: Optional[str] = None, 

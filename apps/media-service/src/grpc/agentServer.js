@@ -2,10 +2,10 @@ const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 const path = require("path");
 
-// 会话 → Agent 流映射
+// Internal bookkeeping for active streams and subscriptions
 const sessionStreams = new Map();
 
-// 会话 → 订阅过滤器映射
+// Internal bookkeeping for active streams and subscriptions
 const sessionFilters = new Map();
 
 // Special key for "all sessions" subscriptions
@@ -15,9 +15,9 @@ let agentProto = null;
 let server = null;
 
 /**
- * 检查事件类型是否匹配订阅过滤器
- * @param {string} eventType - 事件类型，如 "vad.remote.start"
- * @param {string[]} filters - 订阅过滤器，如 ["vad.*", "asr.*"]
+ * 
+ * @param {string} eventType -  "vad.remote.start"
+ * @param {string[]} filters -  ["vad.*", "asr.*"]
  */
 function matchesFilter(eventType, filters) {
   if (!filters || filters.length === 0) return true;
@@ -33,8 +33,8 @@ function matchesFilter(eventType, filters) {
 }
 
 /**
- * 实现 Subscribe RPC
- * Agent 通过这个双向流订阅事件，并可以发送建议
+ *  Subscribe RPC
+ * Agent 
  */
 function subscribeHandler(call) {
   let sessionId = null;
@@ -42,11 +42,11 @@ function subscribeHandler(call) {
 
   console.log("[AgentServer] New agent connection");
 
-  // 接收来自 Agent 的消息
+  // Internal bookkeeping for active streams and subscriptions
   call.on("data", (agentMessage) => {
     try {
       if (agentMessage.subscribe) {
-        // 处理订阅请求
+        // Internal bookkeeping for active streams and subscriptions
         const requestedSessionId = agentMessage.subscribe.session_id || agentMessage.session_id;
         eventTypes = agentMessage.subscribe.event_types || [];
         const wantsAllSessions =
@@ -59,11 +59,11 @@ function subscribeHandler(call) {
         const sessionLabel = wantsAllSessions ? "ALL_SESSIONS" : sessionId;
         console.log(`[AgentServer] Agent subscribed to session ${sessionLabel}, filters: ${eventTypes.join(", ")}`);
         
-        // 保存流和过滤器
+        // Internal bookkeeping for active streams and subscriptions
         sessionStreams.set(sessionId, call);
         sessionFilters.set(sessionId, eventTypes);
         
-        // 发送确认消息 (可选)
+        // Internal bookkeeping for active streams and subscriptions
         call.write({
           session_id: requestedSessionId || "*",
           timestamp_ms: Date.now(),
@@ -74,7 +74,7 @@ function subscribeHandler(call) {
           },
         });
       } else if (agentMessage.suggestion) {
-        // 处理 Agent 建议
+        // Internal bookkeeping for active streams and subscriptions
         const suggestion = agentMessage.suggestion;
         sessionId = agentMessage.session_id;
         
@@ -85,7 +85,7 @@ function subscribeHandler(call) {
           confidence: suggestion.confidence,
         });
         
-        // 触发建议处理事件
+        // Internal bookkeeping for active streams and subscriptions
         if (server && server._suggestionCallback) {
           server._suggestionCallback({
             sessionId,
@@ -125,9 +125,9 @@ function subscribeHandler(call) {
 }
 
 /**
- * 推送事件到已订阅的 Agent
- * @param {string} sessionId - 会话ID
- * @param {object} event - 事件对象
+ *  Agent
+ * @param {string} sessionId - ID
+ * @param {object} event - 
  */
 function pushEvent(sessionId, event) {
   const eventType = event.type || event.event_type || "";
@@ -142,13 +142,13 @@ function pushEvent(sessionId, event) {
     if (!stream) continue;
 
     const filters = sessionFilters.get(key);
-    // 检查事件是否匹配过滤器
+    // Internal bookkeeping for active streams and subscriptions
     if (!matchesFilter(eventType, filters)) {
       continue;
     }
 
     try {
-      // 转换事件格式为 Proto 格式 (始终使用真实 sessionId)
+      // Internal bookkeeping for active streams and subscriptions
       const sessionEvent = convertToSessionEvent(sessionId, event);
       stream.write(sessionEvent);
       delivered = true;
@@ -161,7 +161,7 @@ function pushEvent(sessionId, event) {
 }
 
 /**
- * 转换内部事件格式为 SessionEvent Proto 格式
+ *  SessionEvent Proto 
  */
 function convertToSessionEvent(sessionId, event) {
   const sessionEvent = {
@@ -173,7 +173,7 @@ function convertToSessionEvent(sessionId, event) {
   const eventType = sessionEvent.event_type;
   const payload = event.payload || event;
 
-  // 根据事件类型填充相应字段
+  // Internal bookkeeping for active streams and subscriptions
   if (eventType.startsWith("vad.")) {
     sessionEvent.vad = {
       action: payload.action || payload.event || "",
@@ -198,10 +198,10 @@ function convertToSessionEvent(sessionId, event) {
 }
 
 /**
- * 启动 Agent gRPC 服务器
- * @param {number} port - 监听端口
- * @param {string} protoPath - agent.proto 文件路径
- * @param {function} onSuggestion - 接收到 Agent 建议的回调
+ *  Agent gRPC 
+ * @param {number} port - 
+ * @param {string} protoPath - agent.proto 
+ * @param {function} onSuggestion -  Agent 
  */
 function startAgentServer(port, protoPath, onSuggestion) {
   if (server) {
@@ -210,7 +210,7 @@ function startAgentServer(port, protoPath, onSuggestion) {
   }
 
   try {
-    // 加载 proto 文件
+    // Internal bookkeeping for active streams and subscriptions
     const packageDefinition = protoLoader.loadSync(protoPath, {
       keepCase: true,
       longs: String,
@@ -221,18 +221,18 @@ function startAgentServer(port, protoPath, onSuggestion) {
     
     agentProto = grpc.loadPackageDefinition(packageDefinition).agent;
 
-    // 创建服务器
+    // Internal bookkeeping for active streams and subscriptions
     server = new grpc.Server();
     
-    // 保存建议回调
+    // Internal bookkeeping for active streams and subscriptions
     server._suggestionCallback = onSuggestion;
 
-    // 注册服务
+    // Internal bookkeeping for active streams and subscriptions
     server.addService(agentProto.AgentBridge.service, {
       Subscribe: subscribeHandler,
     });
 
-    // 绑定端口
+    // Internal bookkeeping for active streams and subscriptions
     const address = `0.0.0.0:${port}`;
     server.bindAsync(
       address,
@@ -254,7 +254,7 @@ function startAgentServer(port, protoPath, onSuggestion) {
 }
 
 /**
- * 停止 Agent gRPC 服务器
+ *  Agent gRPC 
  */
 function stopAgentServer() {
   if (!server) {
@@ -264,7 +264,7 @@ function stopAgentServer() {
   return new Promise((resolve) => {
     console.log("[AgentServer] Stopping gRPC server");
     
-    // 关闭所有活动流
+    // Internal bookkeeping for active streams and subscriptions
     for (const [sessionId, stream] of sessionStreams) {
       console.log(`[AgentServer] Closing stream for session ${sessionId}`);
       try {
@@ -286,14 +286,14 @@ function stopAgentServer() {
 }
 
 /**
- * 获取活动订阅数
+ * 
  */
 function getActiveSubscriptionCount() {
   return sessionStreams.size;
 }
 
 /**
- * 检查会话是否有 Agent 订阅
+ *  Agent 
  */
 function hasSubscription(sessionId) {
   return sessionStreams.has(sessionId);
