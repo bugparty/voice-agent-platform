@@ -4,17 +4,17 @@
 
 ---
 
-## 0. 状态管理：XState v5
+## 0. State Management: XState v5
 
-### 技术选型
+### Technology Selection
 
-| 项目 | 选择 | 理由 |
+| Item | Choice | Rationale |
 |------|------|------|
-| 状态管理 | XState v5 | 状态机建模适合通话场景、事件驱动、可视化调试 |
+| State management | XState v5 | State machine modeling is well-suited for call scenarios, event-driven flows, and visual debugging |
 
-### 核心状态机设计
+### Core State Machine Design
 
-#### callMachine - 通话状态机
+#### callMachine - Call State Machine
 
 ```typescript
 import { setup, assign } from 'xstate';
@@ -75,7 +75,7 @@ export const callMachine = setup({
 });
 ```
 
-#### agentMachine - Agent 状态机
+#### agentMachine - Agent State Machine
 
 ```typescript
 export const agentMachine = setup({
@@ -127,7 +127,7 @@ export const agentMachine = setup({
 });
 ```
 
-#### vadMachine - VAD 状态机
+#### vadMachine - VAD State Machine
 
 ```typescript
 export const vadMachine = setup({
@@ -161,7 +161,7 @@ export const vadMachine = setup({
 });
 ```
 
-### 状态机组合与 Actor 模式
+### State Machine Composition and Actor Pattern
 
 ```typescript
 // state/actors.ts
@@ -173,17 +173,17 @@ export const agentActor = createActor(agentMachine);
 export const vadRemoteActor = createActor(vadMachine);
 export const vadLocalActor = createActor(vadMachine);
 
-// 启动所有 actors
+// Start all actors
 callActor.start();
 agentActor.start();
 vadRemoteActor.start();
 vadLocalActor.start();
 ```
 
-### 与 React 集成
+### Integration with React
 
 ```typescript
-// 使用 @xstate/react
+// Using @xstate/react
 import { useSelector } from '@xstate/react';
 import { callActor, agentActor } from './actors';
 
@@ -429,7 +429,7 @@ Complete chronological trace of **everything that happened**.
 }
 ```
 
-**注意**：Timeline 显示的事件使用统一的 UI 事件格式（`category.source.action`），由 `media-service` 的事件规范化层统一转换。
+**Note**: Events shown in the Timeline use a unified UI event format (`category.source.action`), transformed by the `media-service` event normalization layer.
 
 ---
 
@@ -508,7 +508,7 @@ All realtime updates are delivered as events:
 * This UI is intentionally **developer-first** but not throwaway
 * Every field maps directly to backend events
 * No polling — everything is push-based
-* **状态管理使用 XState v5**：所有 UI 状态由状态机驱动，支持可视化调试（[Stately Studio](https://stately.ai/studio)）
+* **State management uses XState v5**: all UI states are driven by state machines and support visual debugging ([Stately Studio](https://stately.ai/studio))
 
 ---
 
