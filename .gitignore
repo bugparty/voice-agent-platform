@@ -8,3 +8,7 @@ node_modules/
 
 apps/debug_audio/
 apps/ai-audio-service/.venv/
+
+.env
+.env.*
+!.env.example
