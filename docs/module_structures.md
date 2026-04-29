@@ -1,13 +1,13 @@
-## 技术栈声明
+## Technology Stack Statement
 
-| 层级 | 选型 |
+| Layer | Choice |
 |------|------|
-| 包管理 | pnpm workspaces |
-| 前端框架 | Next.js 14+ (App Router) |
-| 状态管理 | XState v5 |
-| 后端运行时 | Node.js 18+ / Python 3.10+ |
-| 通信协议 | gRPC (bidirectional streaming) |
-| VAD 模型 | Silero VAD (ONNX) |
+| Package management | pnpm workspaces |
+| Frontend framework | Next.js 14+ (App Router) |
+| State management | XState v5 |
+| Backend runtime | Node.js 18+ / Python 3.10+ |
+| Communication protocol | gRPC (bidirectional streaming) |
+| VAD model | Silero VAD (ONNX) |
 
 ### pnpm-workspace.yaml
 
@@ -19,7 +19,7 @@ packages:
 
 ---
 
-## 推荐：Monorepo 顶层结构
+## Recommended: Monorepo top-level structure
 
 
 ```bash
@@ -27,20 +27,20 @@ repo/
   apps/
     web/                      # Next.js UI + BFF endpoints
     media-service/            # Node: Twilio Media Streams WS + gRPC client + call control
-    ai-audio-service/         # Python: gRPC server + VAD(+ASR/分类预留)
+    ai-audio-service/         # Python: gRPC server + VAD (+ room for ASR/classification)
   packages/
-    proto/                    # .proto + 生成脚本 + 生成产物(可选)
-    event-schema/             # TS/Zod 事件契约 + JSON schema + mock events
-    shared-config/            # eslint/tsconfig/prettier(可选)
+    proto/                    # .proto + generation scripts + generated artifacts (optional)
+    event-schema/             # TS/Zod event contract + JSON schema + mock events
+    shared-config/            # eslint/tsconfig/prettier (optional)
   infra/
     docker/                   # Dockerfiles
-    compose/                  # docker-compose for local dev
-    k8s/                      # 未来上 k8s 再用
-  scripts/                    # 一键启动、生成、格式化
+    compose/                  # docker-compose for local development
+    k8s/                      # Use later when moving to Kubernetes
+  scripts/                    # one-click startup, generation, formatting
   docs/
-    architecture/             # 你现在那份架构文档
+    architecture/             # your current architecture docs
     ui/                       # UI spec + screenshots
-    runbooks/                 # 本地跑起来、排障
+    runbooks/                 # local setup and troubleshooting
   .env.example
   README.md
 
@@ -50,21 +50,21 @@ repo/
 ---
 
 
-## apps/web（Next.js：UI + 轻量 BFF）
+## apps/web (Next.js: UI + lightweight BFF)
 
 
-**职责**：UI、token、TwiML webhook（如果你愿意把 Twilio webhooks 放这里也行）
+**Responsibilities**: UI, token issuance, TwiML webhook (you can also place Twilio webhooks here if you prefer)
 
 
 ```bash
 apps/web/
   src/
     app/                      # App Router
-      page.tsx                # Debug Console 页面
+      page.tsx                # Debug Console page
       api/
         token/route.ts        # Twilio Access Token
-        twiml/route.ts        # 返回 TwiML (voice webhook)
-        events/route.ts       # (可选) SSE/WebSocket gateway
+        twiml/route.ts        # Returns TwiML (voice webhook)
+        events/route.ts       # (Optional) SSE/WebSocket gateway
     components/
       status/TopStatusBar.tsx
       panels/ControlPanel.tsx
@@ -73,13 +73,13 @@ apps/web/
       input/CommandBar.tsx
     state/
       machines/
-        callMachine.ts        # XState v5 通话状态机
-        agentMachine.ts       # Agent 状态机
-        vadMachine.ts         # VAD 状态机
+        callMachine.ts        # XState v5 call state machine
+        agentMachine.ts       # Agent state machine
+        vadMachine.ts         # VAD state machine
       actors.ts               # XState actors
-      store.ts                # 全局状态 store
+      store.ts                # Global state store
     lib/
-      twilio/                 # Device init、call helpers
+      twilio/                 # Device init and call helpers
       events/                 # event client, parsing, typing
       permissions/            # mic permissions + device selection
     types/
@@ -91,32 +91,31 @@ apps/web/
 
 
 >
-> 建议：UI 从一开始就“只吃事件”，所有状态由事件驱动（跟你 UI spec 一致）。
+> Recommendation: make the UI “event-driven only” from day one, with all state derived from events (aligned with your UI spec).
 >
 >
 >
-
 
 ---
 
 
-## apps/media-service（Node：Twilio WS + gRPC client + Twilio 控制）
+## apps/media-service (Node: Twilio WS + gRPC client + Twilio control)
 
 
-**职责**：接 Twilio Media Streams（WS），把音频转发到 Python（gRPC streaming），接收 VAD/ASR/agent 事件，再控制 Twilio（redirect/play/stop等），并把统一事件推给 Web UI。
+**Responsibilities**: Receive Twilio Media Streams (WS), forward audio to Python (gRPC streaming), receive VAD/ASR/agent events, then control Twilio (redirect/play/stop, etc.), and push unified events to the Web UI.
 
 
 ```bash
 apps/media-service/
   src/
-    index.ts                  # 启动入口
+    index.ts                  # Entry point
     config/
       env.ts
     twilio/
-      mediaWsServer.ts        # 接 Twilio media stream WS
-      twiml.ts                # TwiML 模板（listen/speak/transfer 等）
+      mediaWsServer.ts        # Receives Twilio media stream WS
+      twiml.ts                # TwiML templates (listen/speak/transfer, etc.)
       callControl.ts          # Twilio REST API: redirect/hangup/play
-      signatures.ts           # webhook 签名校验（可选）
+      signatures.ts           # webhook signature verification (optional)
     grpc/
       client.ts               # gRPC bidi client (to ai-audio-service)
       codecs.ts               # codec enum mapping, pass-through
@@ -124,37 +123,36 @@ apps/media-service/
       sessionStore.ts         # in-memory/redis store
       types.ts
     events/
-      bus.ts                  # 内部事件总线
+      bus.ts                  # internal event bus
       emitters/
-        uiWs.ts               # 推事件到 UI (WS/SSE)
-        logs.ts               # 写文件/console
-      normalize.ts            # 统一事件格式（对齐 event-schema）
+        uiWs.ts               # pushes events to UI (WS/SSE)
+        logs.ts               # writes to file/console
+      normalize.ts            # unified event format (aligned with event-schema)
     agent/
-      controller.ts           # agent 状态机（如果 agent 不在 python）
+      controller.ts           # agent state machine (if agent is not in Python)
   package.json
 
 ```
 
 
 >
-> 关键：`events/normalize.ts` 把各处来的东西（twilio/grpc/agent）都变成同一套 event-schema，再推给 UI。
+> Key point: `events/normalize.ts` converts incoming data from different sources (twilio/grpc/agent) into one event-schema before sending to UI.
 >
-> **事件命名转换规则**：
-> - gRPC 层：`UPPER_SNAKE_CASE`（如 `SPEECH_START`）
-> - UI 层：`category.source.action`（如 `vad.remote.start`）
-> - 转换逻辑：`SPEECH_START` (source: remote) → `vad.remote.start`
+> **Event naming conversion rules**:
+> - gRPC layer: `UPPER_SNAKE_CASE` (e.g., `SPEECH_START`)
+> - UI layer: `category.source.action` (e.g., `vad.remote.start`)
+> - Conversion logic: `SPEECH_START` (source: remote) → `vad.remote.start`
 >
 >
 >
-
 
 ---
 
 
-## apps/ai-audio-service（Python：gRPC server + 音频AI）
+## apps/ai-audio-service (Python: gRPC server + audio AI)
 
 
-**职责**：接收音频流，解码/重采样，Silero VAD 推理，输出 VAD 事件。后续自然扩展：ASR、beep/busy 分类、robot detector。
+**Responsibilities**: Receive audio streams, decode/resample, run Silero VAD inference, and output VAD events. Natural extensions later: ASR, beep/busy classification, robot detector.
 
 
 ```bash
@@ -164,8 +162,8 @@ apps/ai-audio-service/
     main.py                   # gRPC server entry
     config.py
     grpc/
-      server.py               # gRPC bidi Stream handler
-      generated/              # protoc 生成的 *_pb2.py
+      server.py               # gRPC bidi stream handler
+      generated/              # protoc-generated *_pb2.py
     audio/
       decode_mulaw.py         # μ-law -> PCM16
       resample.py             # 8k -> 16k
@@ -184,19 +182,18 @@ apps/ai-audio-service/
 
 
 >
-> 建议：Python 只吐“音频AI事件”（VAD/ASR/分类）。至于 Twilio 控制/重定向，留在 Node。
+> Recommendation: Python should output only “audio AI events” (VAD/ASR/classification). Keep Twilio control/redirection in Node.
 >
 >
 >
-
 
 ---
 
 
-## packages/proto（跨语言契约：gRPC）
+## packages/proto (cross-language contract: gRPC)
 
 
-**职责**：唯一真源（single source of truth）的 `.proto`，以及生成脚本（TS + Python）。
+**Responsibilities**: The single source of truth `.proto` files plus generation scripts (TS + Python).
 
 
 ```bash
@@ -204,56 +201,54 @@ packages/proto/
   audioai/
     audioai.proto             # AudioChunk / VadEvent / (future AsrEvent)
   scripts/
-    gen-ts.sh                 # 生成 TS 客户端/类型
-    gen-py.sh                 # 生成 Python *_pb2.py
+    gen-ts.sh                 # Generates TS clients/types
+    gen-py.sh                 # Generates Python *_pb2.py
   generated/
-    ts/                       # (可选) 生成产物提交到仓库
+    ts/                       # (Optional) generated artifacts committed to repo
     py/
 
 ```
 
 
 >
-> 原型阶段可以把 generated 提交进仓库，省去每次环境搭建；后期再改成 build 时生成。
+> In prototyping, you can commit generated outputs to the repository to simplify setup; later switch to build-time generation.
 >
 >
 >
-
 
 ---
 
 
-## packages/event-schema（UI/系统事件契约 + mock）
+## packages/event-schema (UI/system event contract + mocks)
 
 
-**职责**：你 UI spec 里那套事件名/字段，落成可验证的 schema（TS/Zod/JSON Schema），同时提供 mock events 让 UI 先跑起来。
+**Responsibilities**: Turn the event names/fields from your UI spec into verifiable schemas (TS/Zod/JSON Schema), and provide mock events so the UI can run first.
 
 
 ```bash
 packages/event-schema/
   src/
     events.ts                 # event union types
-    zod.ts                    # zod schema for runtime validate
+    zod.ts                    # zod schema for runtime validation
     constants.ts              # event names
     mock/
-      sample-session.jsonl    # 一段完整通话事件流（json lines）
-      generators.ts           # 生成 mock stream
+      sample-session.jsonl    # a complete call event stream (JSON Lines)
+      generators.ts           # generates mock stream
   package.json
 
 ```
 
 
 >
-> 你要的“对方文本、我方文本、agent plan、vad 状态、用户指令、按钮操作”等，都最终以事件形式从这里统一定义。
+> “Remote transcript, local transcript, agent plan, VAD state, user commands, button actions,” and similar concepts should all be uniformly defined here as events.
 >
 >
 >
-
 
 ---
 
 
-## infra/compose（本地一键跑）
+## infra/compose (one-command local run)
 
 
 ```bash
@@ -270,7 +265,7 @@ infra/docker/
 ---
 
 
-## docs（文档落点）
+## docs (documentation locations)
 
 
 ```bash
@@ -290,14 +285,13 @@ docs/
 ---
 
 
-## 一句话：模块边界怎么定
+## In one sentence: how to define module boundaries
 
 
-- **web**：只负责 UI + 少量 BFF（token/twiml）
-- **media-service**：所有“实时系统 glue”与“通话控制”都在这里（Twilio WS、gRPC client、redirect、推 UI 事件）
-- **ai-audio-service**：所有音频 AI（VAD/ASR/分类）都在这里
-- **proto + event-schema**：两份契约把系统“钉死”，防止后期耦合爆炸
+- **web**: only handles UI + small amount of BFF (token/twiml)
+- **media-service**: all real-time system glue and call control lives here (Twilio WS, gRPC client, redirect, pushing UI events)
+- **ai-audio-service**: all audio AI (VAD/ASR/classification) lives here
+- **proto + event-schema**: these two contracts “lock” the system design and prevent coupling from exploding later
 
 
 ---
- 
