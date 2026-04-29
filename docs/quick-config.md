@@ -1,43 +1,43 @@
-# 快速配置指南
+# Quick Configuration Guide
 
-## 设置拨叫号码
+## Set the Dial-Out Number
 
-当前系统配置拨叫号码为：**+1 (619) 859-7172**
+The system is currently configured to dial: **+1 (619) 859-7172**
 
-### 方法 1: 使用环境变量（推荐）
+### Method 1: Use Environment Variables (Recommended)
 
-在 `apps/media-service` 目录下创建 `.env` 文件：
+Create a `.env` file in the `apps/media-service` directory:
 
 ```bash
-# 创建 .env 文件
+# Create .env file
 cd apps/media-service
-touch .env  # Windows 使用: type nul > .env
+touch .env  # On Windows, use: type nul > .env
 ```
 
-编辑 `.env` 文件，添加以下内容：
+Edit the `.env` file and add the following:
 
 ```bash
-# Twilio 配置（必填）
+# Twilio configuration (required)
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token_here
 TWILIO_FROM_NUMBER=+1234567890
 
-# 拨叫目标号码
+# Dial target number
 FIXED_TO_NUMBER=+16198597172
 
-# 公网 URL（用于 Twilio webhook，需要 ngrok）
+# Public URL (for Twilio webhook, requires ngrok)
 PUBLIC_BASE_URL=https://your-ngrok-url.ngrok.io
 ```
 
-### 方法 2: 直接修改代码（不推荐）
+### Method 2: Modify Code Directly (Not Recommended)
 
-如果不想使用 .env 文件，可以直接修改 `apps/media-service/src/config/env.js`：
+If you do not want to use a `.env` file, you can modify `apps/media-service/src/config/env.js` directly:
 
 ```javascript
 function getConfig() {
   return {
-    // ... 其他配置
-    fixedToNumber: process.env.FIXED_TO_NUMBER || "+16198597172",  // 添加默认值
+    // ... other config
+    fixedToNumber: process.env.FIXED_TO_NUMBER || "+16198597172",  // add default value
     // ...
   };
 }
@@ -45,66 +45,66 @@ function getConfig() {
 
 ---
 
-## 完整 .env 配置示例
+## Complete `.env` Configuration Example
 
 ```bash
 # ============================================
-# Twilio 基础配置（必需）
+# Twilio basic configuration (required)
 # ============================================
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token_here
 TWILIO_FROM_NUMBER=+1234567890
 
 # ============================================
-# Phase 2: Conference 功能（可选）
+# Phase 2: Conference features (optional)
 # ============================================
-# 如需 Web 端加入通话，需要配置以下三项
+# To allow web clients to join a call, configure the following:
 # TWILIO_API_KEY=SKxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # TWILIO_API_SECRET=your_api_secret_here
 # TWILIO_TWIML_APP_SID=APxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # ============================================
-# 拨叫配置
+# Dial configuration
 # ============================================
-# 固定拨叫号码（点击 Call 时拨打的号码）
+# Fixed dial-out number (called when clicking Call)
 FIXED_TO_NUMBER=+16198597172
 
 # ============================================
-# 服务配置
+# Service configuration
 # ============================================
-# 公网 URL（Twilio webhook 会调用这个地址）
-# 本地开发使用 ngrok: ngrok http 4001
-# 然后填入 ngrok 给的 URL，例如：
+# Public URL (Twilio webhook will call this address)
+# For local development with ngrok: ngrok http 4001
+# Then fill in the URL provided by ngrok, for example:
 PUBLIC_BASE_URL=https://abc123.ngrok.io
 
-# 服务端口（默认 4001）
+# Service port (default 4001)
 MEDIA_SERVICE_PORT=4001
 
 # ============================================
-# 音频 AI 配置（可选）
+# Audio AI configuration (optional)
 # ============================================
-# 是否使用 Python VAD（false 则使用 mock）
+# Whether to use Python VAD (false uses mock)
 USE_PYTHON_VAD=false
 
-# Python ai-audio-service 地址
+# Python ai-audio-service endpoint
 AI_AUDIO_GRPC_URL=localhost:50051
 ```
 
 ---
 
-## 验证配置
+## Verify Configuration
 
-启动服务后，查看日志：
+After starting the service, check the logs:
 
 ```bash
 pnpm --filter media-service start
 ```
 
-应该看到：
+You should see:
 
 ```
 [media-service] Starting call {
-  to: '+16198597172',    ← 确认号码正确
+  to: '+16198597172',    ← Confirm the number is correct
   from: '+1234567890',
   sessionId: 'sess_...',
   confName: 'conf_...'
@@ -113,41 +113,41 @@ pnpm --filter media-service start
 
 ---
 
-## 使用 ngrok 暴露本地服务
+## Expose Local Service with ngrok
 
 ```bash
-# 安装 ngrok（如果还没安装）
+# Install ngrok (if not installed yet)
 # https://ngrok.com/download
 
-# 启动 ngrok
+# Start ngrok
 ngrok http 4001
 
-# 复制 Forwarding URL，例如：
+# Copy the Forwarding URL, for example:
 # Forwarding: https://abc123.ngrok.io -> http://localhost:4001
 
-# 在 .env 中设置：
+# Set it in .env:
 PUBLIC_BASE_URL=https://abc123.ngrok.io
 ```
 
-**注意：** 每次重启 ngrok，URL 会变化，需要更新 `.env` 文件和 Twilio Console 的 TwiML App 配置。
+**Note:** Each time ngrok restarts, the URL changes. You need to update the `.env` file and the TwiML App configuration in Twilio Console.
 
 ---
 
-## 测试流程
+## Test Workflow
 
-1. **配置 .env**
+1. **Configure `.env`**
    ```bash
    cd apps/media-service
-   # 编辑 .env 文件，填入配置
+   # Edit .env and fill in configuration values
    ```
 
-2. **启动 ngrok**（如果需要）
+2. **Start ngrok** (if needed)
    ```bash
    ngrok http 4001
-   # 复制 URL 到 .env 的 PUBLIC_BASE_URL
+   # Copy URL to PUBLIC_BASE_URL in .env
    ```
 
-3. **启动服务**
+3. **Start services**
    ```bash
    # Terminal 1: media-service
    pnpm --filter media-service start
@@ -156,41 +156,41 @@ PUBLIC_BASE_URL=https://abc123.ngrok.io
    pnpm --filter web dev
    ```
 
-4. **测试拨叫**
-   - 打开浏览器 http://localhost:3000
-   - 点击 "Call" 按钮
-   - 确认 +16198597172 手机收到来电
+4. **Test dialing**
+   - Open browser at http://localhost:3000
+   - Click the "Call" button
+   - Confirm that +16198597172 receives the call
 
-5. **测试 Conference**（Phase 2）
-   - 通话接通后
-   - 点击 "Join Conference"
-   - 说话，确认对方能听到
+5. **Test Conference** (Phase 2)
+   - After call is connected
+   - Click "Join Conference"
+   - Speak and confirm the other side can hear you
 
 ---
 
-## 常见问题
+## FAQ
 
-### Q: 如何修改拨叫号码？
+### Q: How do I change the dial-out number?
 
-**A:** 修改 `.env` 文件中的 `FIXED_TO_NUMBER`，重启 media-service。
+**A:** Update `FIXED_TO_NUMBER` in the `.env` file, then restart media-service.
 
-### Q: 支持动态输入号码吗？
+### Q: Is dynamic number input supported?
 
-**A:** 当前版本是固定号码。如需动态输入，需要修改：
-1. Web UI 添加输入框
-2. `/call/start` API 接受 `to` 参数
-3. 修改 `apps/media-service/src/index.js`
+**A:** The current version uses a fixed number. To support dynamic input, you need to modify:
+1. Add an input field in Web UI
+2. Make `/call/start` API accept a `to` parameter
+3. Update `apps/media-service/src/index.js`
 
-### Q: 号码格式要求？
+### Q: What phone number format is required?
 
-**A:** 使用 E.164 格式：`+[国家代码][区号][号码]`
-- 美国: `+16198597172`
-- 中国: `+8613812345678`
+**A:** Use E.164 format: `+[country code][area code][number]`
+- US: `+16198597172`
+- China: `+8613812345678`
 
-### Q: .env 文件不生效？
+### Q: Why is my `.env` file not taking effect?
 
-**A:** 确保：
-1. 文件名是 `.env`（没有扩展名）
-2. 文件在 `apps/media-service/` 目录下
-3. 重启了 media-service
-4. 使用 `console.log(config.fixedToNumber)` 检查加载情况
+**A:** Make sure:
+1. Filename is `.env` (no extension)
+2. File is located in `apps/media-service/`
+3. media-service was restarted
+4. Use `console.log(config.fixedToNumber)` to verify it loaded
