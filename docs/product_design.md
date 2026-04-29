@@ -1,22 +1,12 @@
 # CallBuddy for Community Access
 
-## 1. 产品概述 (Overview)
-
-### English
+## 1. Product Overview
 
 CallBuddy is an AI-assisted calling tool designed to reduce the burden of navigating automated phone systems for essential community services. The system helps users get connected, pass through IVR menus, and then hands control to the user at the moment a human agent or identity verification is required.
 
 **Core Design Principle**: Strict boundary control. AI assists with navigation and waiting, but never impersonates the user or handles protected personal or medical information.
 
-### 中文
-
-CallBuddy 是一个 AI 辅助通话工具，旨在减轻用户在访问社区基础服务时导航自动化电话系统的负担。系统帮助用户接通电话、通过 IVR 菜单，并在需要人工客服或身份验证时立即将控制权交还给用户。
-
-**核心设计原则**：严格的边界控制。AI 只协助导航和等待，绝不冒充用户或处理受保护的个人或医疗信息。
-
-## 2. 问题陈述 (Problem Statement)
-
-### English
+## 2. Problem Statement
 
 Many people struggle to access essential services by phone due to:
 
@@ -27,137 +17,126 @@ Many people struggle to access essential services by phone due to:
 
 This friction disproportionately affects seniors, non-native English speakers, and underserved communities.
 
-### 中文
+## 3. Target Users
 
-许多人在通过电话访问基础服务时遇到困难，原因包括：
+* Seniors managing prescriptions
+* Non-native English speakers
+* Users with phone-call anxiety
+* Caregivers assisting others
 
-* 冗长的 IVR 菜单和等待时间
-* 语言障碍
-* 电话通话焦虑
-* 行动或无障碍限制
+## 4. Non-Goals
 
-这些问题对老年人、非英语母语者和服务不足的社区影响尤为严重。
+CallBuddy is explicitly **not** designed to:
 
-## 3. 目标用户 (Target Users)
+* Replace the user in a live conversation
+* Answer identity-verification questions
+* Provide medical advice or prescription management
+* Store or process protected health information
 
-* 管理处方的老年人
-* 非英语母语者
-* 有通话焦虑的用户
-* 协助他人的护理人员
+## 5. Core Use Case: Pharmacy Call Assistance
 
-## 4. 非目标 (Non-Goals)
+### 5.1 Scenario Description
 
-CallBuddy 明确**不**设计用于：
+The user wants to confirm whether a prescription is ready for pickup, but does not want to navigate a complex automated phone menu.
 
-* 在对话中替代用户
-* 回答身份验证问题
-* 提供医疗建议或处方管理
-* 存储或处理受保护的健康信息
+### 5.2 User Flow
 
-## 5. 核心使用场景：药房电话协助
+1. **Start the call**: The user selects the pharmacy call scenario.
+2. **AI navigation**: AI places the call and automatically navigates the IVR menu.
+3. **Critical-point detection**: When the system requests identity verification, AI immediately stops.
+4. **Control handoff**: Call control is transferred to the user.
+5. **Enter copilot mode**: AI switches to silent copilot mode and only provides supporting information.
 
-### 5.1 场景描述
+### 5.3 System Behavior Boundaries
 
-用户希望确认处方是否已准备好取药，但不想导航复杂的自动化电话菜单。
+During the IVR navigation phase:
+* AI may listen to voice prompts.
+* AI may send DTMF signals to navigate menus.
+* AI may wait in queue.
 
-### 5.2 用户流程
+During the user conversation phase:
+* AI **immediately stops** all voice interaction.
+* AI **cannot** answer any questions.
+* AI **cannot** provide personal information.
+* The user can take over the call at any time.
 
-1. **发起通话**：用户选择药房通话场景
-2. **AI 导航**：AI 拨打电话并自动导航 IVR 菜单
-3. **检测关键节点**：当系统请求身份验证时，AI 立即停止
-4. **控制权转移**：将通话控制权转交给用户
-5. **进入副驾驶模式**：AI 切换到静默副驾驶模式，仅提供辅助信息
+## 6. Copilot Mode
 
-### 5.3 系统行为边界
+After the user takes over the call, CallBuddy enters copilot mode and provides the following assistive features:
 
-在 IVR 导航阶段：
-* AI 可以监听语音提示
-* AI 可以发送 DTMF 信号导航菜单
-* AI 可以等待队列
+* **Real-time speech-to-text**: Converts call audio into on-screen captions.
+* **Optional translation**: Provides real-time translation for the user.
+* **Conversation prompts**: Displays suggested responses and guidance on screen.
 
-在用户对话阶段：
-* AI **立即停止**所有语音交互
-* AI **不能**回答任何问题
-* AI **不能**提供个人信息
-* 用户随时可以接管通话
+**Important limitation**: In copilot mode, AI **never** injects audio into the call and only provides visual assistance.
 
-## 6. 副驾驶模式 (Copilot Mode)
+## 7. Safety and Compliance
 
-当用户接管通话后，CallBuddy 进入副驾驶模式，提供以下辅助功能：
+### 7.1 Identity Disclosure
 
-* **实时语音转文字**：将通话内容转换为文字字幕显示
-* **可选翻译**：为用户提供实时翻译
-* **对话提示**：在屏幕上显示对话建议和提示
+* AI **always** discloses that it is an AI when interacting with humans.
+* AI **never** impersonates the user.
 
-**重要限制**：在副驾驶模式下，AI **绝不**向通话中注入任何音频，仅为用户提供视觉辅助。
+### 7.2 Data Protection
 
-## 7. 系统安全与合规 (Safety and Compliance)
+* AI **never** answers staff questions.
+* AI **never** provides or requests personal or medical data.
+* The system **avoids** storing protected health information.
 
-### 7.1 身份披露
+### 7.3 User Control
 
-* AI 在与人类交互时**始终**披露其 AI 身份
-* AI **绝不**冒充用户
+* The user can take over the call **at any time**.
+* AI actions and user actions are **strictly separated**.
+* The system is designed to ensure the user always retains final control.
 
-### 7.2 数据保护
+### 7.4 Legal and Ethical Considerations
 
-* AI **绝不**回答工作人员的问题
-* AI **绝不**提供或请求个人或医疗数据
-* 系统**避免**存储受保护的健康信息
+CallBuddy minimizes legal and ethical risk by:
 
-### 7.3 用户控制
+* Avoiding impersonation
+* Avoiding storage of protected health information
+* Clearly separating AI actions from user actions
 
-* 用户**随时**可以接管通话
-* AI 操作和用户操作**严格分离**
-* 系统设计确保用户始终拥有最终控制权
+## 8. Technical Architecture Reference
 
-### 7.4 法律与伦理
+> **Note**: This section provides implementation reference. For detailed architecture, see `docs/call-arch.md` and `docs/audio-pipeline.md`.
 
-CallBuddy 通过以下方式最小化法律和伦理风险：
+CallBuddy is built on a real-time voice architecture designed for low-latency, secure, and observable AI-assisted calls. The implementation follows a strict separation-of-concerns principle.
 
-* 避免冒充行为
-* 避免存储受保护的健康信息
-* 清晰区分 AI 操作和用户操作
+### 8.1 High-Level Architecture
 
-## 8. 技术架构参考 (Technical Architecture Reference)
+The system is split into three independent components:
 
-> **注意**：本节提供技术实现参考，详细架构文档请参阅 `docs/call-arch.md` 和 `docs/audio-pipeline.md`。
+* **Browser (Next.js)**: Used only for remote control and status display; it does not process raw audio.
+* **Node.js media-service**: The call orchestrator that integrates Twilio, manages call sessions, handles IVR navigation, and enforces AI boundary rules.
+* **Python ai-audio-service**: Performs audio decoding and AI inference (VAD and future ASR) via gRPC, and returns only structured events.
 
-CallBuddy 基于实时语音架构，设计用于低延迟、安全且可观察的 AI 辅助通话。实现遵循严格的关注点分离原则。
+This architecture intentionally separates responsibilities to reduce blast radius and ensure the AI component cannot directly control phone actions or user identity.
 
-### 8.1 高层架构
+### 8.2 Audio and Event Flow
 
-系统分为三个独立组件：
+1. Twilio Media Streams sends μ-law 8 kHz audio frames to the Node.js media-service.
+2. Node.js forwards audio frames to the Python AI service over a per-session bidirectional gRPC stream.
+3. The AI service performs decoding, resampling, and VAD inference, then emits structured speech events.
+4. Node.js transforms AI events into UI signals (for captions, copilot prompts, or interruption logic).
 
-* **浏览器 (Next.js)**：仅作为远程控制和状态显示，不处理原始音频
-* **Node.js media-service**：通话编排器，集成 Twilio，管理通话会话、IVR 导航，并强制执行 AI 边界规则
-* **Python ai-audio-service**：通过 gRPC 执行音频解码和 AI 推理（VAD、未来 ASR），仅返回结构化事件
+**Key constraint**: The AI service **never** emits phone-control commands or speaks directly into the call.
 
-这种架构设计有意分离，以减少影响范围，确保 AI 组件无法直接影响电话控制或用户身份。
+### 8.3 Phase Separation
 
-### 8.2 音频和事件流
+The system distinguishes two strictly separated phases:
 
-1. Twilio Media Streams 将 μ-law 8 kHz 音频帧发送到 Node.js media-service
-2. Node.js 通过每个会话的 gRPC 双向流将音频帧转发到 Python AI 服务
-3. AI 服务执行解码、重采样和 VAD 推理，发出结构化语音事件
-4. Node.js 将 AI 事件转换为 UI 信号（用于字幕、副驾驶提示或打断逻辑）
+* **IVR navigation phase**: AI may listen and send DTMF input to navigate menus.
+* **User conversation phase**: Once identity verification or a live agent is reached, AI input is disabled and control is handed to the user.
 
-**关键约束**：AI 服务**绝不**发出电话命令或直接向通话中说话。
+This separation is enforced at the session state-machine level.
 
-### 8.3 阶段分离
+## 9. Future Extensions
 
-系统区分两个严格分离的阶段：
+* Support additional essential-service categories (utilities, housing, social services)
+* Configurable IVR navigation rules
+* Enhanced accessibility features
 
-* **IVR 导航阶段**：AI 可以监听并发送 DTMF 输入以导航菜单
-* **用户对话阶段**：一旦到达身份验证或人工客服，AI 输入被禁用，控制权交给用户
+## 10. Summary
 
-这种分离在会话状态机级别强制执行。
-
-## 9. 未来扩展 (Future Extensions)
-
-* 支持其他基础服务（公用事业、住房、社会服务）
-* 可配置的 IVR 导航规则
-* 无障碍功能增强
-
-## 10. 总结 (Summary)
-
-CallBuddy 通过消除电话通话中最困难的部分——接通电话，来改善对基础服务的访问。系统设计具有明确的限制，以确保用户控制、隐私和信任。核心价值在于：AI 协助导航，用户掌控对话。
+CallBuddy improves access to essential services by removing the hardest part of phone calls: getting through to the right point in the system. It is designed with clear constraints to ensure user control, privacy, and trust. The core value is simple: AI assists with navigation, while the user controls the conversation.
