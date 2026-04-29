@@ -1,20 +1,20 @@
-# Phase 2: Twilio Conference + Web 语音接入实现计划
+# Phase 2: Twilio Conference + Web Voice Access Implementation Plan
 
-> 目标：将 Twilio Conference 集成到 Node.js media-service，并在 Web UI 实现基于 Twilio Voice SDK 的麦克风/扬声器功能，使用户能够通过浏览器加入通话与 PSTN 被叫方直接对话。
+> Goal: Integrate Twilio Conference into the Node.js media-service, and implement Twilio Voice SDK-based microphone/speaker functionality in the Web UI so users can join calls from the browser and speak directly with the PSTN callee.
 
 ---
 
-## 0. 架构概览
+## 0. Architecture Overview
 
-### 两条音频路径
+### Two Audio Paths
 
-| 方向 | 音频路径 | Node.js 角色 |
+| Direction | Audio Path | Node.js Role |
 |------|----------|--------------|
-| **用户说话 → PSTN** | Web → Twilio (WebRTC) → Conference → PSTN | 只提供 Token，不经手音频 |
-| **PSTN → AI 分析** | PSTN → Media Streams → Node → Python | 转发音频到 AI |
-| **PSTN → 用户听** | Conference → Twilio (WebRTC) → Web | 不经手音频 |
+| **User speaking → PSTN** | Web → Twilio (WebRTC) → Conference → PSTN | Only provides token; does not handle audio |
+| **PSTN → AI analysis** | PSTN → Media Streams → Node → Python | Forwards audio to AI |
+| **PSTN → User listening** | Conference → Twilio (WebRTC) → Web | Does not handle audio |
 
-### 时序图
+### Sequence Diagram
 
 ```
 User (Web UI)          media-service          Twilio              PSTN Callee
@@ -49,20 +49,20 @@ User (Web UI)          media-service          Twilio              PSTN Callee
 
 ---
 
-## 1. Node.js media-service 改造
+## 1. Node.js media-service Changes
 
-### 1.1 Session Store 扩展
+### 1.1 Session Store Extension
 
-扩展 `apps/media-service/src/sessions/sessionStore.js`，增加 conference 相关字段：
+Extend `apps/media-service/src/sessions/sessionStore.js` with conference-related fields:
 
 ```javascript
 {
-  sessionId,      // UUID (新增)
-  confName,       // conference 名称 (新增)
+  sessionId,      // UUID (new)
+  confName,       // conference name (new)
   callSid,        // PSTN leg
   streamSid,      // Media Streams
-  webCallSid,     // Web leg - 用户加入后 (新增)
-  state,          // CALLING | IN_CALL | USER_JOINED | USER_LEFT | ENDING (新增)
+  webCallSid,     // Web leg - after user joins (new)
+  state,          // CALLING | IN_CALL | USER_JOINED | USER_LEFT | ENDING (new)
   createdAt,
   callStartAt,
   lastAudioAt,
@@ -71,13 +71,13 @@ User (Web UI)          media-service          Twilio              PSTN Callee
 }
 ```
 
-### 1.2 TwiML 端点重构
+### 1.2 TwiML Endpoint Refactor
 
-修改 `apps/media-service/src/twilio/twiml.js`，拆分为两个 TwiML 生成器：
+Modify `apps/media-service/src/twilio/twiml.js` and split into two TwiML builders:
 
 #### buildOutboundConferenceTwiml(session)
 
-PSTN leg 加入 conference + 启动 Media Stream：
+PSTN leg joins conference + starts Media Stream:
 
 ```xml
 <Response>
@@ -94,7 +94,7 @@ PSTN leg 加入 conference + 启动 Media Stream：
 
 #### buildWebJoinConferenceTwiml(session)
 
-Web leg 加入同一 conference：
+Web leg joins the same conference:
 
 ```xml
 <Response>
@@ -104,19 +104,19 @@ Web leg 加入同一 conference：
 </Response>
 ```
 
-### 1.3 新增 API 端点
+### 1.3 Add API Endpoints
 
-在 `apps/media-service/src/index.js` 添加：
+Add the following in `apps/media-service/src/index.js`:
 
-| 端点 | 方法 | 用途 |
+| Endpoint | Method | Purpose |
 |------|------|------|
-| `/twiml/outbound` | POST | PSTN 接通后返回 Conference TwiML |
-| `/twiml/webJoin` | POST | Web SDK 连接时返回 Conference TwiML |
-| `/token` | POST | 为 Web 端生成 Twilio Access Token |
+| `/twiml/outbound` | POST | Returns Conference TwiML after PSTN is connected |
+| `/twiml/webJoin` | POST | Returns Conference TwiML when Web SDK connects |
+| `/token` | POST | Generates Twilio Access Token for the web client |
 
-### 1.4 Token 生成
+### 1.4 Token Generation
 
-使用 `twilio.jwt.AccessToken` 生成带 Voice Grant 的 token：
+Use `twilio.jwt.AccessToken` to generate a token with Voice Grant:
 
 ```javascript
 const AccessToken = require('twilio').jwt.AccessToken;
@@ -142,18 +142,18 @@ function generateToken(identity) {
 
 ---
 
-## 2. Web UI 实现
+## 2. Web UI Implementation
 
-### 2.1 安装依赖
+### 2.1 Install Dependency
 
 ```bash
 cd apps/web
 pnpm add @twilio/voice-sdk
 ```
 
-### 2.2 Twilio Device 管理模块
+### 2.2 Twilio Device Management Module
 
-创建 `apps/web/src/lib/twilio/device.ts`：
+Create `apps/web/src/lib/twilio/device.ts`:
 
 ```typescript
 import { Device, Call } from '@twilio/voice-sdk';
@@ -197,9 +197,9 @@ export function getDevice(): Device | null {
 }
 ```
 
-### 2.3 Audio 权限管理
+### 2.3 Audio Permission Management
 
-创建 `apps/web/src/lib/permissions/audio.ts`：
+Create `apps/web/src/lib/permissions/audio.ts`:
 
 ```typescript
 export type PermissionState = 'granted' | 'prompt' | 'denied';
@@ -223,87 +223,87 @@ export async function getAudioDevices(): Promise<MediaDeviceInfo[]> {
 }
 ```
 
-### 2.4 UI 控件扩展
+### 2.4 UI Control Enhancements
 
-在 `apps/web/src/app/page.tsx` 添加：
+Add the following in `apps/web/src/app/page.tsx`:
 
-- **Join / Leave 按钮** - 用户加入/离开通话
-- **Mute 按钮** - 麦克风静音
-- **设备选择器** - 选择麦克风/扬声器 (可选)
-- **连接状态指示** - 显示 Web leg 连接状态
+- **Join / Leave button** - User joins/leaves the call
+- **Mute button** - Mute microphone
+- **Device selector** - Select microphone/speaker (optional)
+- **Connection status indicator** - Show web leg connection status
 
 ---
 
-## 3. 环境配置
+## 3. Environment Configuration
 
-### 3.1 新增环境变量
+### 3.1 Add Environment Variables
 
-在 `apps/media-service/src/config/env.js` 添加：
+Add to `apps/media-service/src/config/env.js`:
 
 ```
-TWILIO_TWIML_APP_SID    # TwiML App SID (需在 Twilio Console 创建)
+TWILIO_TWIML_APP_SID    # TwiML App SID (must be created in Twilio Console)
 TWILIO_API_KEY          # API Key
 TWILIO_API_SECRET       # API Secret
 ```
 
-### 3.2 Twilio Console 配置
+### 3.2 Twilio Console Configuration
 
-1. **创建 TwiML App**
-   - 进入 Twilio Console → Voice → TwiML Apps
-   - 创建新 App，Voice URL 设置为 `https://YOUR_PUBLIC_BASE/twiml/webJoin`
-   - 记录 App SID
+1. **Create a TwiML App**
+   - Go to Twilio Console → Voice → TwiML Apps
+   - Create a new app, set Voice URL to `https://YOUR_PUBLIC_BASE/twiml/webJoin`
+   - Record the App SID
 
-2. **创建 API Key**
-   - 进入 Twilio Console → Account → API Keys
-   - 创建 Standard API Key
-   - 记录 Key SID 和 Secret
+2. **Create an API Key**
+   - Go to Twilio Console → Account → API Keys
+   - Create a Standard API Key
+   - Record the Key SID and Secret
 
 ---
 
-## 4. 事件流完善
+## 4. Event Flow Enhancements
 
-扩展事件类型支持 conference 状态：
+Extend event types to support conference states:
 
 ```javascript
-// 新增事件类型
-'conference.user.joined'   // 用户加入
-'conference.user.left'     // 用户离开
-'conference.user.muted'    // 用户静音
-'conference.user.unmuted'  // 用户取消静音
+// New event types
+'conference.user.joined'   // User joined
+'conference.user.left'     // User left
+'conference.user.muted'    // User muted
+'conference.user.unmuted'  // User unmuted
 ```
 
 ---
 
-## 5. 实现顺序
+## 5. Implementation Order
 
-| 序号 | 任务 | 依赖 |
+| No. | Task | Dependencies |
 |------|------|------|
-| 1 | 扩展 sessionStore.js 增加 confName/sessionId/state 字段 | - |
-| 2 | 重构 twiml.js 支持 Conference + Stream 组合 TwiML | - |
-| 3 | 添加 /twiml/outbound 端点处理 PSTN leg 加入 conference | 1, 2 |
-| 4 | 在 Twilio Console 创建 TwiML App 和 API Key | - |
-| 5 | 添加 /token 端点生成 Twilio Access Token | 1, 4 |
-| 6 | 添加 /twiml/webJoin 端点处理 Web leg 加入 conference | 2 |
-| 7 | 创建 Web Twilio Device 管理模块 (device.ts) | 5 |
-| 8 | 创建麦克风权限管理模块 (audio.ts) | - |
-| 9 | 实现 Join/Leave/Mute 按钮和设备选择 UI | 7, 8 |
-| 10 | 扩展事件总线支持 conference 状态事件 | 6 |
+| 1 | Extend `sessionStore.js` with `confName` / `sessionId` / `state` fields | - |
+| 2 | Refactor `twiml.js` to support combined Conference + Stream TwiML | - |
+| 3 | Add `/twiml/outbound` endpoint to handle PSTN leg joining conference | 1, 2 |
+| 4 | Create TwiML App and API Key in Twilio Console | - |
+| 5 | Add `/token` endpoint to generate Twilio Access Token | 1, 4 |
+| 6 | Add `/twiml/webJoin` endpoint to handle web leg joining conference | 2 |
+| 7 | Create web Twilio Device management module (`device.ts`) | 5 |
+| 8 | Create microphone permission management module (`audio.ts`) | - |
+| 9 | Implement Join/Leave/Mute buttons and device selection UI | 7, 8 |
+| 10 | Extend event bus with conference state events | 6 |
 
 ---
 
-## 6. 验收标准
+## 6. Acceptance Criteria
 
-1. ✅ 点击 Call：PSTN 被叫接通，UI 显示 `IN_CALL`
-2. ✅ 点击 Join：用户麦克风接入，被叫能听到用户说话
-3. ✅ 点击 Mute：被叫听不到用户
-4. ✅ 点击 Leave：用户退出但 PSTN 通话保持
-5. ✅ 点击 Hangup：整个通话结束
+1. ✅ Click **Call**: PSTN callee answers, UI shows `IN_CALL`
+2. ✅ Click **Join**: User microphone is connected, callee can hear the user
+3. ✅ Click **Mute**: Callee cannot hear the user
+4. ✅ Click **Leave**: User exits, PSTN call remains active
+5. ✅ Click **Hangup**: Entire call ends
 
 ---
 
-## 7. 后续扩展 (不在 Phase 2 范围)
+## 7. Future Extensions (Out of Scope for Phase 2)
 
-- AI TTS 输出到 PSTN (方案 A: TwiML 重定向 / 方案 B: 双向 Media Streams)
-- DTMF 键盘 (UI → Node → Twilio)
-- 本地 VAD (需要额外的 Media Stream 或本地处理)
-- 通话录音
+- AI TTS output to PSTN (Option A: TwiML redirect / Option B: bidirectional Media Streams)
+- DTMF keypad (UI → Node → Twilio)
+- Local VAD (requires additional Media Stream or local processing)
+- Call recording
