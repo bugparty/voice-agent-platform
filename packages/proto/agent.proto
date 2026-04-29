@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package agent;
 
-// media-service 作为服务端，Agent 作为客户端
+// media-service acts as server; Agent acts as client
 service AgentBridge {
-  // Agent 订阅会话事件，同时可以发送建议
+  // Bidirectional stream: Agent subscribes to session events and sends suggestions.
   rpc Subscribe(stream AgentMessage) returns (stream SessionEvent);
 }
 

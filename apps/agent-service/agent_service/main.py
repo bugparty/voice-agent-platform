@@ -35,13 +35,16 @@ CLEANUP_TIMEOUT = 3.0
 
 def init_llm_client():
     """
-    初始化 ChatGPT LLM 客户端
-    如果没有配置 OPENAI_API_KEY，返回 None（FSM 将在 mock 模式下运行）
-    
-    支持的环境变量:
-    - OPENAI_API_KEY: API 密钥（必需）
-    - OPENAI_API_URL: API base URL（可选，用于兼容 OpenAI API 的其他服务）
-    - OPENAI_MODEL: 使用的模型（可选，默认 gpt-4.1-mini）
+    Initialize the OpenAI LLM client.
+
+    Returns:
+        OpenAI client instance when credentials are configured;
+        otherwise returns None and the FSM runs in mock mode.
+
+    Supported environment variables:
+    - OPENAI_API_KEY: required API key
+    - OPENAI_API_URL: optional base URL for OpenAI-compatible gateways
+    - OPENAI_MODEL: optional model name (default: gpt-4.1-mini)
     """
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -54,7 +57,7 @@ def init_llm_client():
     try:
         from openai import OpenAI
         
-        # 构建 client 参数
+        # Build keyword arguments for OpenAI client initialization
         client_kwargs = {"api_key": api_key}
         if api_url:
             client_kwargs["base_url"] = api_url
@@ -69,13 +72,13 @@ def init_llm_client():
 
 
 def get_openai_model() -> str:
-    """获取配置的 OpenAI 模型名称"""
+    """Return the configured OpenAI model name."""
     return os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 
 def init_call_fsm() -> CallFSM:
     """
-    初始化 FSM + LLM agent
+    Initialize the call FSM with the configured LLM client.
     """
     llm_client = init_llm_client()
 
