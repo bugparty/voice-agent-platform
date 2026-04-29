@@ -6,3 +6,5 @@ apps/web/.next/
 **/*.pyc
 node_modules/
 
+apps/debug_audio/
+apps/ai-audio-service/.venv/

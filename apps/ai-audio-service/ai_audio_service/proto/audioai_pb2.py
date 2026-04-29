@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\raudioai.proto\x12\x07\x61udioai\"c\n\nAudioChunk\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0b\n\x03seq\x18\x02 \x01(\r\x12\r\n\x05\x63odec\x18\x03 \x01(\t\x12\x0f\n\x07payload\x18\x04 \x01(\x0c\x12\x14\n\x0ctimestamp_ms\x18\x05 \x01(\x04\"Q\n\x08VadEvent\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05\x65vent\x18\x02 \x01(\t\x12\x0c\n\x04prob\x18\x03 \x01(\x02\x12\x14\n\x0ctimestamp_ms\x18\x04 \x01(\x04\x32?\n\x07\x41udioAI\x12\x34\n\x06Stream\x12\x13.audioai.AudioChunk\x1a\x11.audioai.VadEvent(\x01\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\raudioai.proto\x12\x07\x61udioai\"r\n\nAudioChunk\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x0b\n\x03seq\x18\x02 \x01(\r\x12\r\n\x05\x63odec\x18\x03 \x01(\t\x12\x0f\n\x07payload\x18\x04 \x01(\x0c\x12\x14\n\x0ctimestamp_ms\x18\x05 \x01(\x04\x12\r\n\x05track\x18\x06 \x01(\t\"t\n\x08VadEvent\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\r\n\x05\x65vent\x18\x02 \x01(\t\x12\x0c\n\x04prob\x18\x03 \x01(\x02\x12\x14\n\x0ctimestamp_ms\x18\x04 \x01(\x04\x12\r\n\x05track\x18\x05 \x01(\t\x12\x12\n\nmusic_prob\x18\x06 \x01(\x02\x32?\n\x07\x41udioAI\x12\x34\n\x06Stream\x12\x13.audioai.AudioChunk\x1a\x11.audioai.VadEvent(\x01\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,9 +32,9 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'audioai_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_AUDIOCHUNK']._serialized_start=26
-  _globals['_AUDIOCHUNK']._serialized_end=125
-  _globals['_VADEVENT']._serialized_start=127
-  _globals['_VADEVENT']._serialized_end=208
-  _globals['_AUDIOAI']._serialized_start=210
-  _globals['_AUDIOAI']._serialized_end=273
+  _globals['_AUDIOCHUNK']._serialized_end=140
+  _globals['_VADEVENT']._serialized_start=142
+  _globals['_VADEVENT']._serialized_end=258
+  _globals['_AUDIOAI']._serialized_start=260
+  _globals['_AUDIOAI']._serialized_end=323
 # @@protoc_insertion_point(module_scope)

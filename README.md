@@ -10,7 +10,6 @@ We use AI to prepare call scripts, wait through automated systems, and summarize
 
 The result: fewer missed resources, less anxiety, and more equitable access to help that already exists.
 
-This is not about replacing humans—it’s about giving people their time and dignity back.
 
 
 ## Architecture
@@ -19,6 +18,11 @@ This is not about replacing humans—it’s about giving people their time and d
 - **Python** (Silero VAD, audio processing, AI inference)
 - **Next.js** (Debug Console UI with XState v5)
 
+## DEMO
+
+<a href="https://www.youtube.com/watch?v=Du3rKGQkTOc" target="_blank">
+  <img src="https://img.youtube.com/vi/Du3rKGQkTOc/maxresdefault.jpg" width="600">
+</a>
 ## Tech Stack
 
 - **Package Manager**: pnpm workspaces
@@ -70,6 +74,23 @@ voip_agent/
    # Start web
    pnpm --filter web dev
    ```
+
+## Docker Compose (Dev)
+
+This runs the three dev services in containers and auto-starts them.
+
+1. Ensure `apps/media-service/.env` has your Twilio/ngrok values.
+   The web app already includes `apps/web/.env`, but you can adjust it if needed.
+
+2. Start the stack:
+   ```bash
+   docker compose up --build
+   ```
+
+3. Services:
+   - Web: http://localhost:3005
+   - Media service: http://localhost:4001
+   - AI audio gRPC: localhost:50051
 
 ## Local Twilio + ngrok setup
 

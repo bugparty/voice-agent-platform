@@ -1,0 +1,67 @@
+services:
+  ai-audio-service:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    working_dir: /workspace
+    command: >
+      bash -lc "cd apps/ai-audio-service
+      && python3 -m venv .venv
+      && .venv/bin/pip install -q -r requirements.txt
+      && .venv/bin/python -m ai_audio_service.main"
+    environment:
+      AI_AUDIO_SERVICE_PORT: "50051"
+      AUDIOAI_PROTO_PATH: /workspace/packages/proto/audioai.proto
+    volumes:
+      - ./:/workspace
+      - ai_audio_venv:/workspace/apps/ai-audio-service/.venv
+    ports:
+      - "50051:50051"
+
+  media-service:
+    image: node:20-bookworm
+    working_dir: /workspace
+    command: >
+      bash -lc "corepack enable
+      && corepack prepare pnpm@8.15.4 --activate
+      && pnpm install
+      && pnpm --filter media-service run dev"
+    env_file:
+      - ./apps/media-service/.env
+    environment:
+      AI_AUDIO_GRPC_URL: ai-audio-service:50051
+      MEDIA_SERVICE_PORT: "4001"
+      PNPM_STORE_DIR: /pnpm-store
+    volumes:
+      - ./:/workspace
+      - pnpm_store:/pnpm-store
+    ports:
+      - "4001:4001"
+      - "50052:50052"
+    depends_on:
+      - ai-audio-service
+
+  web:
+    image: node:20-bookworm
+    working_dir: /workspace
+    command: >
+      bash -lc "corepack enable
+      && corepack prepare pnpm@8.15.4 --activate
+      && pnpm install
+      && pnpm --filter web run dev"
+    env_file:
+      - ./apps/web/.env
+    environment:
+      PORT: "3005"
+      PNPM_STORE_DIR: /pnpm-store
+    volumes:
+      - ./:/workspace
+      - pnpm_store:/pnpm-store
+    ports:
+      - "3005:3005"
+    depends_on:
+      - media-service
+
+volumes:
+  ai_audio_venv:
+  pnpm_store:

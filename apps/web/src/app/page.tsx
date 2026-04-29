@@ -2,22 +2,67 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createEventStream, type UiEvent } from "../lib/events/sse";
+import {
+  initDevice,
+  joinConference,
+  leaveConference,
+  toggleMute,
+  isMuted,
+  destroyDevice,
+  type DeviceStatus,
+} from "../lib/twilio/device";
+import {
+  requestMicPermission,
+  type PermissionState,
+} from "../lib/permissions/audio";
+import { Keypad } from "../components/Keypad";
 
 type CallState = {
   callStatus: string;
+  callSid?: string;
+  sessionId?: string;
+  confName?: string;
   vadRemote: "SILENT" | "SPEAKING";
   vadProb: number;
+  musicProb: number;
 };
 
-const DEFAULT_STATUS: CallState = {
+type MessageItem = {
+  id: string;
+  timestamp: number;
+  text: string;
+  source: "caller" | "agent";
+  kind?: string; // Added kind
+  confidence?: number;
+};
+
+type UserState = {
+  deviceStatus: DeviceStatus;
+  micPermission: PermissionState;
+  isMuted: boolean;
+};
+
+const DEFAULT_CALL_STATE: CallState = {
   callStatus: "DISCONNECTED",
   vadRemote: "SILENT",
-  vadProb: 0
+  vadProb: 0,
+  musicProb: 0,
+};
+
+const DEFAULT_USER_STATE: UserState = {
+  deviceStatus: "disconnected",
+  micPermission: "prompt",
+  isMuted: false,
 };
 
 export default function Page() {
   const [events, setEvents] = useState<UiEvent[]>([]);
-  const [status, setStatus] = useState<CallState>(DEFAULT_STATUS);
+  const [callState, setCallState] = useState<CallState>(DEFAULT_CALL_STATE);
+  const [userState, setUserState] = useState<UserState>(DEFAULT_USER_STATE);
+  const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [partialTranscript, setPartialTranscript] = useState<string>("");
+
   const baseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_MEDIA_SERVICE_URL || "http://localhost:4001",
     []
@@ -28,65 +73,432 @@ export default function Page() {
       setEvents((prev) => [event, ...prev].slice(0, 200));
       if (event.category === "TWILIO") {
         if (event.payload?.event === "twilio.call.start") {
-          setStatus((prev) => ({ ...prev, callStatus: "IN_CALL" }));
+          const data = event.payload?.data as any;
+          setCallState((prev) => ({
+            ...prev,
+            callStatus: "IN_CALL",
+            sessionId: data?.sessionId,
+            confName: data?.confName,
+            callSid: data?.callSid,
+          }));
         }
         if (event.payload?.event === "twilio.call.hangup") {
-          setStatus((prev) => ({ ...prev, callStatus: "DISCONNECTED" }));
+          setCallState(DEFAULT_CALL_STATE);
+          // Cleanup device on hangup
+          destroyDevice();
+          setUserState(DEFAULT_USER_STATE);
+          // Clear messages
+          setMessages([]);
+          setPartialTranscript("");
         }
       }
       if (event.category === "VAD") {
         const action = event.payload?.event as string | undefined;
+        const musicProb = Number(event.payload?.musicProb ?? 0);
         if (action?.endsWith(".start")) {
-          setStatus((prev) => ({ ...prev, vadRemote: "SPEAKING" }));
+          setCallState((prev) => ({ ...prev, vadRemote: "SPEAKING", musicProb }));
         } else if (action?.endsWith(".end")) {
-          setStatus((prev) => ({ ...prev, vadRemote: "SILENT", vadProb: 0 }));
+          setCallState((prev) => ({ ...prev, vadRemote: "SILENT", vadProb: 0, musicProb: 0 }));
         } else if (action?.endsWith(".update")) {
           const prob = Number(event.payload?.prob ?? 0);
-          setStatus((prev) => ({ ...prev, vadProb: prob }));
+          setCallState((prev) => ({ ...prev, vadProb: prob, musicProb }));
+        }
+      }
+      if (event.category === "ASR") {
+        const text = event.payload?.text as string;
+        const confidence = Number(event.payload?.confidence ?? 0);
+        const isFinal = Boolean(event.payload?.isFinal);
+
+        if (isFinal) {
+          // Add final transcript to messages
+          setMessages((prev) => [{
+            id: event.id,
+            timestamp: event.ts,
+            text,
+            confidence,
+            source: "caller" as const,
+          }, ...prev].slice(0, 50)); // Keep last 50 messages
+          setPartialTranscript(""); // Clear partial
+        } else {
+          // Update partial transcript
+          setPartialTranscript(text);
+        }
+      }
+      if (event.category === "AGENT") {
+        const text = event.payload?.text as string;
+        const kind = event.payload?.kind as string | undefined;
+        if (text) {
+          setMessages((prev) => [{
+            id: event.id,
+            timestamp: event.ts,
+            text,
+            source: "agent" as const,
+            kind,
+          }, ...prev].slice(0, 50));
         }
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      destroyDevice();
+    };
   }, [baseUrl]);
 
   async function handleStartCall() {
-    await fetch(`${baseUrl}/call/start`, { method: "POST" });
+    try {
+      setError(null);
+      const res = await fetch(`${baseUrl}/call/start`, { method: "POST" });
+      const data = await res.json();
+      if (!data.ok) {
+        setError(data.error || "Failed to start call");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start call");
+    }
   }
 
   async function handleHangup() {
-    await fetch(`${baseUrl}/call/hangup`, { method: "POST" });
+    try {
+      setError(null);
+      await fetch(`${baseUrl}/call/hangup`, { method: "POST" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to hangup");
+    }
   }
+
+  async function handleJoinConference() {
+    console.log("[Web UI] ===== Join Conference Flow Start =====");
+    try {
+      setError(null);
+
+      // Step 1: Check if we have a session
+      console.log("[Web UI] Step 1: Checking session", {
+        sessionId: callState.sessionId,
+        confName: callState.confName,
+        callStatus: callState.callStatus,
+      });
+
+      if (!callState.sessionId) {
+        console.error("[Web UI] No active call session");
+        setError("No active call session");
+        return;
+      }
+
+      // Step 2: Request mic permission (optional - can continue without mic)
+      console.log("[Web UI] Step 2: Requesting microphone permission...");
+      const permission = await requestMicPermission();
+      console.log("[Web UI] Microphone permission result:", permission);
+
+      setUserState((prev) => ({ ...prev, micPermission: permission }));
+
+      if (permission !== "granted") {
+        console.warn("[Web UI] ⚠️ Microphone permission not granted:", permission);
+        console.log("[Web UI] Continuing in LISTEN-ONLY mode (you can hear but cannot speak)");
+        // Don't return - continue to join in listen-only mode
+      } else {
+        console.log("[Web UI] ✓ Microphone permission granted");
+        // Wait a bit to let browser release the microphone
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      // Step 3: Get token from backend
+      const identity = `user_${Date.now()}`;
+      console.log("[Web UI] Step 3: Requesting token from backend", {
+        identity,
+        sessionId: callState.sessionId,
+        endpoint: `${baseUrl}/token`,
+      });
+
+      const tokenRes = await fetch(`${baseUrl}/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identity,
+          sessionId: callState.sessionId,
+        }),
+      });
+
+      const tokenData = await tokenRes.json();
+      console.log("[Web UI] Token response received", {
+        hasToken: !!tokenData.token,
+        hasError: !!tokenData.error,
+        identity: tokenData.identity,
+      });
+
+      if (tokenData.error) {
+        console.error("[Web UI] Token error:", tokenData.error);
+        setError(tokenData.error);
+        return;
+      }
+
+      // Step 4: Initialize device
+      console.log("[Web UI] Step 4: Initializing Twilio Device...");
+      await initDevice(tokenData.token, {
+        onStatusChange: (status) => {
+          console.log("[Web UI] Device status changed:", status);
+          setUserState((prev) => ({ ...prev, deviceStatus: status }));
+        },
+        onError: (err) => {
+          console.error("[Web UI] Device error:", err);
+          setError(err.message);
+        },
+        onCallDisconnected: () => {
+          console.log("[Web UI] Call disconnected");
+          setUserState((prev) => ({ ...prev, isMuted: false }));
+        },
+      });
+
+      // Step 5: Join conference
+      console.log("[Web UI] Step 5: Joining conference", {
+        sessionId: callState.sessionId,
+        audioEnabled: permission === "granted",
+      });
+
+      // Pass audio enabled flag based on permission
+      await joinConference(callState.sessionId, permission === "granted");
+
+      console.log("[Web UI] ===== Join Conference Flow Success =====");
+    } catch (err) {
+      console.error("[Web UI] Join conference failed:", err);
+      setError(err instanceof Error ? err.message : "Failed to join conference");
+    }
+  }
+
+  function handleLeaveConference() {
+    leaveConference();
+    setUserState((prev) => ({ ...prev, isMuted: false }));
+  }
+
+  function handleToggleMute() {
+    const muted = toggleMute();
+    setUserState((prev) => ({ ...prev, isMuted: muted }));
+  }
+
+  async function handleKeypadPress(digit: string) {
+    try {
+      console.log("[Web UI] Keypad pressed:", digit);
+      // Send DTMF tone to backend
+      const res = await fetch(`${baseUrl}/call/dtmf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          digits: digit,  // backend expects "digits" not "digit"
+          sessionId: callState.sessionId,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        console.error("[Web UI] DTMF failed:", data.error);
+      } else {
+        console.log("[Web UI] DTMF sent successfully:", digit);
+      }
+    } catch (err) {
+      console.error("[Web UI] Failed to send DTMF:", err);
+    }
+  }
+
+  const canJoin = callState.callStatus === "IN_CALL" && userState.deviceStatus === "disconnected";
+  const canLeave = userState.deviceStatus === "in-call";
+  const canMute = userState.deviceStatus === "in-call";
+
+  // Debug: log button states
+  console.log("[Web UI] Button states:", {
+    canJoin,
+    callStatus: callState.callStatus,
+    deviceStatus: userState.deviceStatus,
+    sessionId: callState.sessionId,
+  });
 
   return (
     <div className="page">
       <div className="top-bar">
         <div className="status-pill">
           <span>Call</span>
-          <strong>{status.callStatus}</strong>
+          <strong>{callState.callStatus}</strong>
         </div>
         <div className="status-pill">
-          <span className={`status-dot ${status.vadRemote === "SILENT" ? "silent" : ""}`} />
-          <span>VAD</span>
-          <strong>{status.vadRemote}</strong>
-          <small>{status.vadProb.toFixed(2)}</small>
+          <span className={`status-dot ${callState.vadRemote === "SILENT" ? "silent" : ""}`} />
+          <span>VAD Remote</span>
+          <strong>{callState.vadRemote}</strong>
+          <small>{callState.vadProb.toFixed(2)}</small>
+          {callState.musicProb > 0.3 && (
+            <small style={{ color: "#fbbf24", marginLeft: "8px" }}>
+              🎵 {callState.musicProb.toFixed(2)}
+            </small>
+          )}
         </div>
         <div className="status-pill">
-          <span>Media</span>
-          <strong>CONNECTED</strong>
+          <span>User</span>
+          <strong>{userState.deviceStatus.toUpperCase()}</strong>
         </div>
+        {userState.deviceStatus === "in-call" && (
+          <div className="status-pill">
+            <span>Mic</span>
+            <strong>{userState.isMuted ? "MUTED" : "ACTIVE"}</strong>
+          </div>
+        )}
       </div>
+
+      {error && (
+        <div style={{ padding: "12px", background: "#fee", color: "#c00", marginBottom: "12px" }}>
+          {error}
+        </div>
+      )}
 
       <div className="content">
         <div className="panel">
-          <h3>Call Controls</h3>
+          <h3>Call + User Controls</h3>
           <p>Fixed target number is configured in the media-service.</p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={handleStartCall}>Call</button>
-            <button className="secondary" onClick={handleHangup}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={handleStartCall} disabled={callState.callStatus !== "DISCONNECTED"}>
+              Call
+            </button>
+            <button
+              className="secondary"
+              onClick={handleHangup}
+              disabled={callState.callStatus === "DISCONNECTED"}
+            >
               Hangup
             </button>
           </div>
+
+          <h3 style={{ marginTop: "20px" }}>User Controls</h3>
+          <p>Join the conference to speak with the callee.</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={handleJoinConference}
+              disabled={!canJoin}
+              title={!canJoin ? `Cannot join: callStatus=${callState.callStatus}, deviceStatus=${userState.deviceStatus}` : ""}
+            >
+              Join Conference
+            </button>
+            <button className="secondary" onClick={handleLeaveConference} disabled={!canLeave}>
+              Leave
+            </button>
+            <button onClick={handleToggleMute} disabled={!canMute}>
+              {userState.isMuted ? "Unmute" : "Mute"}
+            </button>
+          </div>
+
+          {/* Debug info */}
+          <div style={{ marginTop: "12px", fontSize: "11px", color: "#999", fontFamily: "monospace" }}>
+            <div>canJoin: {canJoin ? "✓ true" : "✗ false"}</div>
+            <div>callStatus: {callState.callStatus} (need: IN_CALL)</div>
+            <div>deviceStatus: {userState.deviceStatus} (need: disconnected)</div>
+          </div>
+
+          {callState.sessionId && (
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+              <div>Session: {callState.sessionId}</div>
+              <div>Conference: {callState.confName}</div>
+            </div>
+          )}
         </div>
+        <div className="panel">
+          <h3>Menu Selection Keypad</h3>
+          <p>Press digits to select menu options during the call.</p>
+          <Keypad
+            onKeyPress={handleKeypadPress}
+            disabled={callState.callStatus !== "IN_CALL"}
+          />
+        </div>
+        <div className="panel">
+          <h3>Messages</h3>
+          {callState.callStatus !== "IN_CALL" ? (
+            <p style={{ color: "#374151", fontSize: "14px" }}>
+              Live call messages will appear here during the call.
+            </p>
+          ) : (
+            <div style={{ marginBottom: "12px" }}>
+              {partialTranscript && (
+                <div style={{
+                  padding: "12px 16px",
+                  background: "rgba(14, 165, 233, 0.15)",
+                  borderLeft: "3px solid #0ea5e9",
+                  borderRadius: "12px",
+                  marginBottom: "8px",
+                  fontSize: "14px",
+                  fontStyle: "italic",
+                  color: "#94a3b8",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 0 12px rgba(14, 165, 233, 0.2)"
+                }}>
+                  {partialTranscript}
+                </div>
+              )}
+              <div style={{
+                maxHeight: "600px",
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+              }}>
+                {messages.length === 0 && !partialTranscript && (
+                  <p style={{ color: "#374151", fontSize: "13px" }}>
+                    Listening for speech...
+                  </p>
+                )}
+                {messages.map((message) => {
+                  const isAgent = message.source === "agent";
+                  const isDtmf = message.kind === "dtmf";
+
+                  // Default styles (user/caller)
+                  let bg = "rgba(30, 41, 59, 0.8)";
+                  let borderLeft = "3px solid #0ea5e9";
+                  let color = "#e2e8f0";
+                  let boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(148, 163, 184, 0.1)";
+
+                  if (isAgent) {
+                    if (isDtmf) {
+                      // Purple for DTMF
+                      bg = "rgba(99, 102, 241, 0.2)";
+                      borderLeft = "3px solid #6366f1";
+                      color = "#e0e7ff";
+                      boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 12px rgba(99, 102, 241, 0.2)";
+                    } else {
+                      // Green for standard Agent speech
+                      bg = "rgba(16, 185, 129, 0.18)";
+                      borderLeft = "3px solid #10b981";
+                      color = "#d1fae5";
+                      boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1), 0 0 12px rgba(16, 185, 129, 0.15)";
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={message.id}
+                      style={{
+                        padding: "12px 16px",
+                        background: bg,
+                        border: "1px solid rgba(148, 163, 184, 0.3)",
+                        borderLeft,
+                        borderRadius: "12px",
+                        fontSize: "14px",
+                        color,
+                        backdropFilter: "blur(8px)",
+                        boxShadow
+                      }}
+                    >
+                      <div style={{ marginBottom: "4px" }}>
+                        {message.text}
+                      </div>
+                      <div style={{ fontSize: "11px", color: isAgent ? (isDtmf ? "#818cf8" : "#6ee7b7") : "#94a3b8" }}>
+                        {isAgent ? (isDtmf ? "Agent Input" : "Agent") : "Caller"}
+                        {message.confidence !== undefined && (
+                          <> · Confidence: {(message.confidence * 100).toFixed(0)}%</>
+                        )}
+                        {" · "}
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="content single">
         <div className="panel">
           <h3>Timeline</h3>
           <div className="timeline">
