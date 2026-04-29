@@ -1,22 +1,22 @@
 const { createClient, LiveTranscriptionEvents } = require("@deepgram/sdk");
 
-// 会话 → Deepgram 连接映射
+// Map: sessionId -> Deepgram live connection
 const sessionConnections = new Map();
 
 /**
- * 创建 Deepgram 实时转写连接
- * @param {string} sessionId - 会话ID
+ * Create and initialize a Deepgram live transcription connection.
+ * @param {string} sessionId - Session identifier.
  * @param {string} apiKey - Deepgram API Key
- * @param {object} config - 配置选项
- * @param {function} onPartial - 接收部分转写的回调
- * @param {function} onFinal - 接收最终转写的回调
- * @param {function} onError - 错误回调
- * @returns {Promise<object>} 返回连接对象
+ * @param {object} config - Runtime ASR options (model, language, utteranceEndMs).
+ * @param {function} onPartial - Callback for interim transcripts.
+ * @param {function} onFinal - Callback for final transcripts.
+ * @param {function} onError - Callback for connection/runtime errors.
+ * @returns {Promise<object>} Connected Deepgram live connection.
  */
 async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) {
   const { onPartial, onFinal, onError, onMetadata, onClose } = callbacks;
 
-  // 如果已存在连接，先关闭
+  // Close and replace any previous connection for the same session.
   if (sessionConnections.has(sessionId)) {
     console.log(`[Deepgram] Closing existing connection for session ${sessionId}`);
     await closeConnection(sessionId);
@@ -38,7 +38,7 @@ async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) 
       channels: 1,
     });
 
-    // 等待连接打开
+    // Wait until the websocket is open (or fail on timeout/error).
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("Deepgram connection timeout"));
@@ -57,7 +57,7 @@ async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) 
       });
     });
 
-    // 设置事件监听器
+    // Register transcript callback handlers.
     connection.on(LiveTranscriptionEvents.Transcript, (data) => {
       const transcript = data.channel?.alternatives?.[0];
       if (!transcript) return;
@@ -113,7 +113,7 @@ async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) 
       }
     });
 
-    // 保存连接
+    // Store as the active connection for this session.
     sessionConnections.set(sessionId, connection);
 
     return connection;
@@ -124,9 +124,9 @@ async function createConnection(sessionId, apiKey, config = {}, callbacks = {}) 
 }
 
 /**
- * 发送音频数据到 Deepgram
- * @param {string} sessionId - 会话ID
- * @param {Buffer} audioBuffer - 音频数据 (μ-law)
+ * Send encoded audio payload to Deepgram.
+ * @param {string} sessionId - Session identifier.
+ * @param {Buffer} audioBuffer - Audio payload (μ-law, 8kHz).
  */
 const noConnectionWarnAt = new Map();
 function sendAudio(sessionId, audioBuffer) {
@@ -151,8 +151,8 @@ function sendAudio(sessionId, audioBuffer) {
 }
 
 /**
- * 关闭 Deepgram 连接
- * @param {string} sessionId - 会话ID
+ * Close the active Deepgram connection for a session.
+ * @param {string} sessionId - Session identifier.
  */
 async function closeConnection(sessionId) {
   const connection = sessionConnections.get(sessionId);
@@ -169,16 +169,12 @@ async function closeConnection(sessionId) {
   }
 }
 
-/**
- * 获取当前活动连接数
- */
+/** Return number of currently active Deepgram connections. */
 function getActiveConnectionCount() {
   return sessionConnections.size;
 }
 
-/**
- * 检查会话是否有活动连接
- */
+/** Check whether a session currently has an active connection. */
 function hasConnection(sessionId) {
   return sessionConnections.has(sessionId);
 }
